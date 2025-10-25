@@ -212,6 +212,7 @@ STRIPE_SECRET_KEY=your_stripe_secret_key_here
 # Email Configuration (for OTP)
 EMAIL_USER=your_email@gmail.com
 EMAIL_PASS=your_app_specific_password
+```
 
 #### 3. Frontend Setup
 
