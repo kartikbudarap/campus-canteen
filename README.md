@@ -229,12 +229,6 @@ STRIPE_SECRET_KEY=your_stripe_secret_key_here
 EMAIL_USER=your_email@gmail.com
 EMAIL_PASS=your_app_specific_password
 
-# Optional: Cloudinary (for production image hosting)
-CLOUDINARY_CLOUD_NAME=your_cloud_name
-CLOUDINARY_API_KEY=your_api_key
-CLOUDINARY_API_SECRET=your_api_secret
-```
-
 #### 3. Frontend Setup
 
 ```bash
@@ -369,13 +363,6 @@ PUT  /api/restaurants/:id         # Update restaurant (seller/admin)
 
 ---
 
-### Run Backend Tests
-
-```bash
-cd backend
-npm test
-```
-
 ## Contributing
 
 Contributions are welcome! Please follow these steps:
@@ -388,7 +375,7 @@ Contributions are welcome! Please follow these steps:
 
 ---
 
-## 🔮 Future Enhancements
+## Future Enhancements
 
 - [ ] Real-time notifications using Socket.io
 - [ ] Push notifications for order updates
@@ -413,8 +400,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 **Kartikean Budarap**
 
-- GitHub: [@yourusername](https://github.com/yourusername)
-- LinkedIn: [Your Name](https://linkedin.com/in/yourprofile)
+- GitHub: [@kartikbudarap](https://github.com/kartikbudarap)
+- LinkedIn: [Kartikean Budarap](https://www.linkedin.com/in/kartikean-budarap-29722b2b1/)
 - Email: kartikbudarap@gmail.com
 
 ---
@@ -436,13 +423,6 @@ For support, email kartikbudarap@gmail.com or open an issue in the repository.
 
 ---
 
-## Star History
-
-If you find this project useful, please consider giving it a star on GitHub!
-
-[![Star History Chart](https://api.star-history.com/svg?repos=yourusername/campus-ecanteen&type=Date)](https://star-history.com/#yourusername/campus-ecanteen&Date)
-
----
 
 <div align="center">
 
