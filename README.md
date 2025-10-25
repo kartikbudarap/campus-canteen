@@ -24,22 +24,6 @@
 
 ---
 
-## 📸 Screenshots
-
-### Landing Page
-![Landing Page](https://via.placeholder.com/800x400/teal/white?text=Landing+Page)
-
-### User Dashboard
-![User Dashboard](https://via.placeholder.com/800x400/3498db/white?text=User+Dashboard)
-
-### Seller Dashboard
-![Seller Dashboard](https://via.placeholder.com/800x400/e67e22/white?text=Seller+Dashboard)
-
-### Admin Dashboard
-![Admin Dashboard](https://via.placeholder.com/800x400/9b59b6/white?text=Admin+Dashboard)
-
----
-
 ## Features
 
 ### User Features
