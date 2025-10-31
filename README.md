@@ -171,8 +171,8 @@ Before you begin, ensure you have the following installed:
 #### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/yourusername/campus-ecanteen.git
-cd campus-ecanteen
+git clone https://github.com/kartikbudarap/campus-canteen.git
+cd campus-canteen
 ```
 
 #### 2. Backend Setup
