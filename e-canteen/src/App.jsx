@@ -1,33 +1,31 @@
 import React, { useState, useEffect } from "react";
+import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useLocation } from "react-router-dom";
 import { ChefHat, ShoppingBag, User, LogOut, LogIn, UserPlus, AlertCircle } from "lucide-react";
 import AdminDashboard from "./components/adminDashboard";
 import SellerDashboard from "./components/sellerDashboard";
 import UserDashboard from "./components/userDashboard";
-import Register from "./components/register";
+import RegisterWithOTP from "./components/RegisterWithOTP";
 import Login from "./components/Login";
 import ForgotPassword from "./components/ForgotPassword";
 import VerifyEmail from "./components/VerifyEmail";
-import RegisterWithOTP from "./components/RegisterWithOTP";
 import { DashboardProvider } from "./context/DashboardContext";
 import LandingPage from './components/LandingPage';
 
-function App() {
-  const [users, setUsers] = useState([]);
-  const [mode, setMode] = useState("landing"); // Changed from "login" to "landing"
+function AppContent() {
   const [currentUser, setCurrentUser] = useState(null);
+  const [pendingVerification, setPendingVerification] = useState(null);
   const [notification, setNotification] = useState(null);
   const [loading, setLoading] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
-  const [authMode, setAuthMode] = useState("login"); // login, register, forgotPassword, verifyEmail
-  const [pendingVerification, setPendingVerification] = useState(null);
-  const [registrationData, setRegistrationData] = useState(null);
+  const navigate = useNavigate();
+  const location = useLocation();
 
   const showToast = (message, type = "error") => {
     setNotification({ message, type });
     setTimeout(() => setNotification(null), 3000);
   };
 
-  // Check authentication status on app load
+  // Check authentication status on app load and route changes
   useEffect(() => {
     const checkAuthStatus = () => {
       const token = localStorage.getItem('token');
@@ -39,23 +37,21 @@ function App() {
         try {
           const user = JSON.parse(savedCurrentUser);
           setCurrentUser(user);
-          setMode("dashboard");
           console.log('User authenticated:', user.role);
         } catch (error) {
           console.error('Error parsing saved user:', error);
-          // Clear invalid data
           localStorage.removeItem('token');
           localStorage.removeItem('currentUser');
-          setMode("landing");
+          setCurrentUser(null);
         }
       } else {
-        setMode("landing");
+        setCurrentUser(null);
       }
       setAuthChecked(true);
     };
 
     checkAuthStatus();
-  }, []);
+  }, [location]);
 
   const handleRegister = async (userData) => {
     try {
@@ -81,16 +77,19 @@ function App() {
         setPendingVerification({
           email: userData.email,
           userId: data.userId,
-          tempToken: data.tempToken // Store the temp token
+          tempToken: data.tempToken
         });
-        setAuthMode("verifyEmail");
+        navigate("/verify-email");
         showToast('Registration successful! Please verify your email.', 'success');
       } else {
-        // If no verification needed (for testing)
+        // If no verification needed
         localStorage.setItem('token', data.token);
         localStorage.setItem('currentUser', JSON.stringify(data.user));
         setCurrentUser(data.user);
-        setMode("dashboard");
+        
+        // Redirect to appropriate dashboard
+        const redirectPath = getDashboardPath(data.user.role);
+        navigate(redirectPath);
         showToast('Registration successful!', 'success');
       }
     } catch (error) {
@@ -120,7 +119,6 @@ function App() {
         throw new Error(data.error || 'Login failed');
       }
 
-      // ✅ FIX: Verify token exists before storing
       if (!data.token) {
         throw new Error('No token received from server');
       }
@@ -131,14 +129,15 @@ function App() {
       // Store token and user data
       localStorage.setItem('token', data.token);
       localStorage.setItem('currentUser', JSON.stringify(data.user));
-      
       setCurrentUser(data.user);
-      setMode("dashboard");
+      
+      // Redirect to appropriate dashboard
+      const redirectPath = getDashboardPath(data.user.role);
+      navigate(redirectPath);
       showToast('Login successful!', 'success');
     } catch (error) {
       console.error('Login error:', error);
       showToast(error.message);
-      // Clear any invalid tokens
       localStorage.removeItem('token');
       localStorage.removeItem('currentUser');
     } finally {
@@ -147,25 +146,12 @@ function App() {
   };
 
   const handleLogout = () => {
-    setLoading(true);
     console.log('Logging out...');
-    
-    // Clear all auth data
     localStorage.removeItem('token');
     localStorage.removeItem('currentUser');
     setCurrentUser(null);
-    setMode("landing"); // Changed from "login" to "landing"
+    navigate("/");
     // showToast('Logged out successfully', 'success');
-    setLoading(false);
-  };
-
-  // Add new handler functions
-  const handleForgotPassword = () => {
-    setAuthMode("forgotPassword");
-  };
-
-  const handleBackToLogin = () => {
-    setAuthMode("login");
   };
 
   const handleResendVerification = async () => {
@@ -197,30 +183,46 @@ function App() {
   };
 
   const handleVerificationComplete = (data) => {
-    // Store the real token and user data
     localStorage.setItem('token', data.token);
     localStorage.setItem('currentUser', JSON.stringify(data.user));
     setCurrentUser(data.user);
-    
     setPendingVerification(null);
-    setAuthMode("login");
-    setMode("dashboard");
+    
+    const redirectPath = getDashboardPath(data.user.role);
+    navigate(redirectPath);
     showToast('Email verified successfully! Welcome to your dashboard.', 'success');
   };
 
-  // Navigation handlers
-  const handleShowLogin = () => {
-    setMode("auth");
-    setAuthMode("login");
+  // Helper function to get dashboard path based on role
+  const getDashboardPath = (role) => {
+    switch (role) {
+      case "admin": return "/admin";
+      case "seller": return "/seller";
+      case "user": return "/user";
+      default: return "/";
+    }
   };
 
-  const handleShowRegister = () => {
-    setMode("auth");
-    setAuthMode("register");
+  // Protected Route component
+  const ProtectedRoute = ({ children, allowedRoles = [] }) => {
+    if (!currentUser) {
+      return <Navigate to="/login" replace />;
+    }
+    
+    if (allowedRoles.length > 0 && !allowedRoles.includes(currentUser.role)) {
+      return <Navigate to="/unauthorized" replace />;
+    }
+    
+    return children;
   };
 
-  const handleShowLanding = () => {
-    setMode("landing");
+  // Public Route component (redirect if already logged in)
+  const PublicRoute = ({ children }) => {
+    if (currentUser) {
+      const redirectPath = getDashboardPath(currentUser.role);
+      return <Navigate to={redirectPath} replace />;
+    }
+    return children;
   };
 
   // Show loading while checking auth
@@ -234,56 +236,6 @@ function App() {
       </div>
     );
   }
-
-  let dashboard;
-  if (currentUser?.role === "admin") {
-    dashboard = <AdminDashboard onLogout={handleLogout} />;
-  } else if (currentUser?.role === "seller") {
-    dashboard = <SellerDashboard onLogout={handleLogout} />;
-  } else if (currentUser?.role === "user") {
-    dashboard = <UserDashboard onLogout={handleLogout} />;
-  }
-
-  // Render auth components based on authMode
-  const renderAuthComponent = () => {
-    switch (authMode) {
-      case "register":
-        return (
-          <RegisterWithOTP 
-            onBackToLogin={() => setAuthMode("login")}
-            onRegister={(data) => {
-              // Store token and user data
-              localStorage.setItem('token', data.token);
-              localStorage.setItem('currentUser', JSON.stringify(data.user));
-              setCurrentUser(data.user);
-              setMode("dashboard");
-              showToast('Registration successful!', 'success');
-            }}
-            initialData={registrationData}
-          />
-        );
-      case "forgotPassword":
-        return <ForgotPassword onBackToLogin={() => setAuthMode("login")} onLogin={handleLogin} />;
-      case "verifyEmail":
-        return (
-          <VerifyEmail 
-            userEmail={pendingVerification?.email} 
-            onVerificationComplete={handleVerificationComplete}
-            onResendEmail={handleResendVerification}
-            tempToken={pendingVerification?.tempToken}
-          />
-        );
-      case "login":
-      default:
-        return (
-          <Login 
-            onLogin={handleLogin} 
-            onForgotPassword={() => setAuthMode("forgotPassword")} 
-            onBackToLanding={handleShowLanding}
-          />
-        );
-    }
-  };
 
   return (
     <DashboardProvider>
@@ -311,82 +263,135 @@ function App() {
         </div>
       )}
 
-      {/* Render components based on mode */}
-      {mode === "landing" && (
-        <LandingPage 
-          onShowLogin={handleShowLogin}
-          onShowRegister={handleShowRegister}
-        />
-      )}
+      <Routes>
+        {/* Public Routes */}
+        <Route path="/" element={
+          <PublicRoute>
+            <LandingPage />
+          </PublicRoute>
+        } />
+        
+        <Route path="/login" element={
+          <PublicRoute>
+            <Login onLogin={handleLogin} />
+          </PublicRoute>
+        } />
+        
+        <Route path="/register" element={
+          <PublicRoute>
+            <RegisterWithOTP onRegister={handleRegister} />
+          </PublicRoute>
+        } />
+        
+        <Route path="/forgot-password" element={
+          <PublicRoute>
+            <ForgotPassword />
+          </PublicRoute>
+        } />
 
-      {mode === "auth" && renderAuthComponent()}
+        <Route path="/verify-email" element={
+          <PublicRoute>
+            <VerifyEmail 
+              userEmail={pendingVerification?.email} 
+              onVerificationComplete={handleVerificationComplete}
+              onResendEmail={handleResendVerification}
+              tempToken={pendingVerification?.tempToken}
+            />
+          </PublicRoute>
+        } />
 
-      {mode === "dashboard" && currentUser && (
-        <>
-          {/* Dashboard Content */}
-          {dashboard}
-        </>
-      )}
-      
-      {/* Auth Mode Switcher - Only show on auth pages */}
-      {mode === "auth" && (
+        {/* Protected Dashboard Routes */}
+        <Route path="/admin/*" element={
+          <ProtectedRoute allowedRoles={["admin"]}>
+            <AdminDashboard onLogout={handleLogout} />
+          </ProtectedRoute>
+        } />
+        
+        <Route path="/seller/*" element={
+          <ProtectedRoute allowedRoles={["seller"]}>
+            <SellerDashboard onLogout={handleLogout} />
+          </ProtectedRoute>
+        } />
+        
+        <Route path="/user/*" element={
+          <ProtectedRoute allowedRoles={["user"]}>
+            <UserDashboard onLogout={handleLogout} />
+          </ProtectedRoute>
+        } />
+
+        {/* Utility Routes */}
+        <Route path="/unauthorized" element={
+          <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+            <div className="bg-white p-8 rounded-xl shadow-lg text-center">
+              <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Unauthorized</h2>
+              <p className="text-gray-600 mb-4">You don't have permission to access this page.</p>
+              <button 
+                onClick={() => navigate("/")}
+                className="bg-red-500 hover:bg-red-600 text-white px-6 py-2 rounded-xl transition-all duration-200"
+              >
+                Go Home
+              </button>
+            </div>
+          </div>
+        } />
+
+        {/* 404 Route */}
+        <Route path="*" element={
+          <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+            <div className="bg-white p-8 rounded-xl shadow-lg text-center">
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Page Not Found</h2>
+              <p className="text-gray-600 mb-4">The page you're looking for doesn't exist.</p>
+              <button 
+                onClick={() => navigate("/")}
+                className="bg-red-500 hover:bg-red-600 text-white px-6 py-2 rounded-xl transition-all duration-200"
+              >
+                Go Home
+              </button>
+            </div>
+          </div>
+        } />
+      </Routes>
+
+      {/* Auth Navigation - Show on auth pages */}
+      {(location.pathname === '/login' || location.pathname === '/register' || location.pathname === '/forgot-password' || location.pathname === '/verify-email') && (
         <div className="fixed top-5 left-5 flex gap-3">
+          {location.pathname !== '/login' && (
+            <button
+              onClick={() => navigate('/login')}
+              className="px-4 py-2 rounded-xl font-medium transition-all duration-200 border bg-white border-gray-300 text-gray-700 hover:border-red-300 hover:bg-red-50"
+            >
+              <LogIn className="w-4 h-4 inline mr-2" />
+              Login
+            </button>
+          )}
+          {location.pathname !== '/register' && (
+            <button
+              onClick={() => navigate('/register')}
+              className="px-4 py-2 rounded-xl font-medium transition-all duration-200 border bg-white border-gray-300 text-gray-700 hover:border-red-300 hover:bg-red-50"
+            >
+              <UserPlus className="w-4 h-4 inline mr-2" />
+              Register
+            </button>
+          )}
           <button
-            onClick={() => setAuthMode("login")}
-            disabled={loading}
-            className={`px-4 py-2 rounded-xl font-medium transition-all duration-200 border ${
-              authMode === "login" 
-                ? "bg-red-500 text-white border-red-500 shadow-sm" 
-                : "bg-white border-gray-300 text-gray-700 hover:border-red-300 hover:bg-red-50"
-            } ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
-          >
-            <LogIn className="w-4 h-4 inline mr-2" />
-            Login
-          </button>
-          <button
-            onClick={() => setAuthMode("register")}
-            disabled={loading}
-            className={`px-4 py-2 rounded-xl font-medium transition-all duration-200 border ${
-              authMode === "register" 
-                ? "bg-red-500 text-white border-red-500 shadow-sm" 
-                : "bg-white border-gray-300 text-gray-700 hover:border-red-300 hover:bg-red-50"
-            } ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
-          >
-            <UserPlus className="w-4 h-4 inline mr-2" />
-            Register
-          </button>
-          <button
-            onClick={handleShowLanding}
-            disabled={loading}
-            className={`px-4 py-2 rounded-xl font-medium transition-all duration-200 border bg-white border-gray-300 text-gray-700 hover:border-red-300 hover:bg-red-50 ${
-              loading ? 'opacity-50 cursor-not-allowed' : ''
-            }`}
+            onClick={() => navigate('/')}
+            className="px-4 py-2 rounded-xl font-medium transition-all duration-200 border bg-white border-gray-300 text-gray-700 hover:border-red-300 hover:bg-red-50"
           >
             ← Back to Home
           </button>
         </div>
       )}
-
-      {/* Show back to home button on landing page when logged out */}
-      {mode === "landing" && !currentUser && (
-        <div className="fixed top-5 right-5 flex gap-3">
-          {/* <button
-            onClick={handleShowLogin}
-            className="px-6 py-2 bg-red-500 text-white rounded-xl hover:bg-red-600 transition-all duration-200 shadow-lg"
-          >
-            <LogIn className="w-4 h-4 inline mr-2" />
-            Login
-          </button> */}
-          {/* <button
-            onClick={handleShowRegister}
-            className="px-6 py-2 border border-red-500 text-red-500 rounded-xl hover:bg-red-500 hover:text-white transition-all duration-200"
-          >
-            <UserPlus className="w-4 h-4 inline mr-2" />
-            Register
-          </button> */}
-        </div>
-      )}
     </DashboardProvider>
+  );
+}
+
+// Main App component with Router
+function App() {
+  return (
+    <Router>
+      <AppContent />
+    </Router>
   );
 }
 

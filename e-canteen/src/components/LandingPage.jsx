@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react'; 
+import React, { useState, useEffect, useCallback } from 'react'; 
+import { useNavigate } from 'react-router-dom';
 import { 
   ArrowRight, 
   Star, 
@@ -21,95 +22,80 @@ import {
   Heart,
   Sparkles,
   TrendingUp,
-  Award
+  Award,
+  Download,
+  ShoppingCart,
+  ChevronLeft,
+  ChevronDown
 } from 'lucide-react';
 
-const LandingPage = ({ onShowLogin, onShowRegister }) => {
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [activeTestimonial, setActiveTestimonial] = useState(0);
+// Custom hook for scroll detection
+const useScroll = () => {
   const [scrollY, setScrollY] = useState(0);
-  const [popularDishes, setPopularDishes] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
 
   useEffect(() => {
     const handleScroll = () => setScrollY(window.scrollY);
-    window.addEventListener('scroll', handleScroll);
+    window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Fetch popular dishes from backend
+  return scrollY;
+};
+
+// Custom hook for API calls
+const usePopularDishes = () => {
+  const [dishes, setDishes] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
   useEffect(() => {
     const fetchPopularDishes = async () => {
       try {
         setLoading(true);
         setError(null);
         
-        // Use absolute URL to avoid path issues
         const apiUrl = process.env.NODE_ENV === 'production' 
           ? '/api/food-items?limit=4'
           : 'http://localhost:5000/api/food-items?limit=4';
-        
-        // console.log('Fetching from:', apiUrl);
         
         const response = await fetch(apiUrl, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
           },
+          signal: AbortSignal.timeout(10000) // 10 second timeout
         });
         
-        // console.log('Response status:', response.status);
-        // console.log('Response ok:', response.ok);
-        
-        // Check if response is HTML (error page)
-        const contentType = response.headers.get('content-type');
-        // console.log('Content-Type:', contentType);
-        
         if (!response.ok) {
-          // Try to read as text first to see what we're getting
-          const errorText = await response.text();
-          console.error('Error response:', errorText);
-          
-          // Check if it's HTML
-          if (errorText.trim().startsWith('<!DOCTYPE') || errorText.trim().startsWith('<html')) {
-            throw new Error('Server returned HTML page instead of JSON. Check if API endpoint exists.');
-          }
-          
-          throw new Error(`HTTP error! status: ${response.status}, message: ${errorText.substring(0, 100)}`);
+          throw new Error(`HTTP ${response.status}`);
         }
         
-        // Check if response is JSON
-        if (!contentType || !contentType.includes('application/json')) {
-          const text = await response.text();
-          console.warn('Expected JSON but got:', text.substring(0, 200));
-          throw new Error('Server returned non-JSON response');
+        const contentType = response.headers.get('content-type');
+        if (!contentType?.includes('application/json')) {
+          throw new Error('Invalid response format');
         }
         
         const data = await response.json();
-        // console.log('API response data:', data);
         
-        if (data.data && data.data.length > 0) {
-          // Transform API data to match component structure
+        if (data.data?.length > 0) {
           const transformedDishes = data.data.map((dish, index) => ({
+            id: dish._id || index,
             name: dish.name,
             price: `₹${dish.price}`,
             image: dish.image || getFallbackImage(dish.category, index),
             category: dish.category,
             badge: getBadge(index),
             description: dish.description,
-            rating: 5
+            rating: 4.5 + Math.random() * 0.5 // Random rating between 4.5-5
           }));
-          
-          setPopularDishes(transformedDishes);
+          setDishes(transformedDishes);
         } else {
-          // console.log('No data found, using fallback dishes');
-          setPopularDishes(getFallbackDishes());
+          setDishes(getFallbackDishes());
         }
       } catch (err) {
         console.error('Error fetching dishes:', err);
         setError(err.message);
-        setPopularDishes(getFallbackDishes());
+        setDishes(getFallbackDishes());
       } finally {
         setLoading(false);
       }
@@ -118,79 +104,182 @@ const LandingPage = ({ onShowLogin, onShowRegister }) => {
     fetchPopularDishes();
   }, []);
 
-  // Helper function to get fallback images based on category
-  const getFallbackImage = (category, index) => {
-    const fallbackImages = {
-      'Main Course': [
-        'https://images.unsplash.com/photo-1565557623262-b51c2513a641?w=300&h=200&fit=crop',
-        'https://images.unsplash.com/photo-1563379091339-03246963d96f?w=300&h=200&fit=crop'
-      ],
-      'Appetizer': [
-        'https://images.unsplash.com/photo-1599487488170-d11ec9c172f0?w=300&h=200&fit=crop'
-      ],
-      'Dessert': [
-        'https://images.unsplash.com/photo-1563245372-f5a8a0b22e63?w=300&h=200&fit=crop'
-      ],
-      'Snacks': [
-        'https://images.unsplash.com/photo-1601050690597-df0568f70950?w=300&h=200&fit=crop'
-      ],
-      'Beverages': [
-        'https://images.unsplash.com/photo-1544145945-f90425340c7e?w=300&h=200&fit=crop'
-      ],
-      'South Indian': [
-        'https://images.unsplash.com/photo-1631452180519-c014fe946bc7?w=300&h=200&fit=crop'
-      ],
-      'Fast Food': [
-        'https://images.unsplash.com/photo-1571091718767-18b5b1457add?w=300&h=200&fit=crop'
-      ]
-    };
+  return { dishes, loading, error };
+};
 
-    const categoryImages = fallbackImages[category] || fallbackImages['Main Course'];
-    return categoryImages[index % categoryImages.length];
+// Helper functions
+const getFallbackImage = (category, index) => {
+  const fallbackImages = {
+    'Main Course': [
+      'https://images.unsplash.com/photo-1565557623262-b51c2513a641?w=400&h=300&fit=crop&auto=format',
+      'https://images.unsplash.com/photo-1563379091339-03246963d96f?w=400&h=300&fit=crop&auto=format'
+    ],
+    'Appetizer': [
+      'https://images.unsplash.com/photo-1599487488170-d11ec9c172f0?w=400&h=300&fit=crop&auto=format'
+    ],
+    'Dessert': [
+      'https://images.unsplash.com/photo-1563245372-f5a8a0b22e63?w=400&h=300&fit=crop&auto=format'
+    ],
+    'Snacks': [
+      'https://images.unsplash.com/photo-1601050690597-df0568f70950?w=400&h=300&fit=crop&auto=format'
+    ],
+    'Beverages': [
+      'https://images.unsplash.com/photo-1544145945-f90425340c7e?w=400&h=300&fit=crop&auto=format'
+    ],
+    'South Indian': [
+      'https://images.unsplash.com/photo-1631452180519-c014fe946bc7?w=400&h=300&fit=crop&auto=format'
+    ],
+    'Fast Food': [
+      'https://images.unsplash.com/photo-1571091718767-18b5b1457add?w=400&h=300&fit=crop&auto=format'
+    ]
   };
 
-  // Helper function to assign badges
-  const getBadge = (index) => {
-    const badges = ['Bestseller', 'Chef\'s Pick', 'Hot Deal', 'New'];
-    return badges[index % badges.length];
-  };
+  const categoryImages = fallbackImages[category] || fallbackImages['Main Course'];
+  return categoryImages[index % categoryImages.length];
+};
 
-  // Fallback dishes in case API fails
-  const getFallbackDishes = () => [
-    {
-      name: "Vada Pav",
-      price: "₹25",
-      image: "https://www.cookwithmanali.com/wp-content/uploads/2018/04/Vada-Pav-500x500.jpg",
-      category: "Snacks",
-      badge: "Bestseller",
-      description: "Spicy potato fritter in a bun with chutneys - Mumbai's favorite street food"
-    },
-    {
-      name: "Samosa",
-      price: "₹20",
-      image: "https://www.indianhealthyrecipes.com/wp-content/uploads/2021/12/samosa-recipe.jpg",
-      category: "Snacks",
-      badge: "Chef's Pick",
-      description: "Crispy golden pastry filled with spiced potatoes and peas, served with chutneys"
-    },
-    {
-      name: "Margherita Pizza",
-      price: "₹299",
-      image: "https://media-assets.swiggy.com/swiggy/image/upload/f_auto,q_auto,fl_lossy/RX_THUMBNAIL/IMAGES/VENDOR/2024/6/26/ebdf270d-8e2b-43de-ae89-03bdfd6ece46_222542.JPG",
-      category: "Main Course",
-      badge: "Hot Deal",
-      description: "Classic cheese pizza with fresh tomato sauce and mozzarella cheese"
-    },
-    {
-      name: "Chicken Biryani",
-      price: "₹180",
-      image: "https://www.cubesnjuliennes.com/wp-content/uploads/2020/01/Chicken-Biryani.jpg",
-      category: "Main Course",
-      badge: "New",
-      description: "Fragrant basmati rice cooked with mixed vegetables and aromatic spices"
-    }
-  ];
+const getBadge = (index) => {
+  const badges = ['Bestseller', 'Chef\'s Pick', 'Hot Deal', 'New'];
+  return badges[index % badges.length];
+};
 
+const getFallbackDishes = () => [
+  {
+    id: 1,
+    name: "Vada Pav",
+    price: "₹25",
+    image: "https://images.unsplash.com/photo-1586190848861-99aa4a171e90?w=400&h=300&fit=crop&auto=format",
+    category: "Snacks",
+    badge: "Bestseller",
+    description: "Spicy potato fritter in a bun with chutneys - Mumbai's favorite street food",
+    rating: 4.8
+  },
+  {
+    id: 2,
+    name: "Samosa",
+    price: "₹20",
+    image: "https://images.unsplash.com/photo-1601050690597-df0568f70950?w=400&h=300&fit=crop&auto=format",
+    category: "Snacks",
+    badge: "Chef's Pick",
+    description: "Crispy golden pastry filled with spiced potatoes and peas, served with chutneys",
+    rating: 4.7
+  },
+  {
+    id: 3,
+    name: "Margherita Pizza",
+    price: "₹299",
+    image: "https://images.unsplash.com/photo-1574071318508-1cdbab80d002?w=400&h=300&fit=crop&auto=format",
+    category: "Main Course",
+    badge: "Hot Deal",
+    description: "Classic cheese pizza with fresh tomato sauce and mozzarella cheese",
+    rating: 4.9
+  },
+  {
+    id: 4,
+    name: "Chicken Biryani",
+    price: "₹180",
+    image: "https://images.unsplash.com/photo-1631452180519-c014fe946bc7?w=400&h=300&fit=crop&auto=format",
+    category: "Main Course",
+    badge: "New",
+    description: "Fragrant basmati rice cooked with mixed vegetables and aromatic spices",
+    rating: 4.6
+  }
+];
+
+// Skeleton Loader Component
+const DishSkeleton = () => (
+  <div className="bg-white rounded-3xl shadow-lg overflow-hidden animate-pulse">
+    <div className="w-full h-56 bg-gradient-to-r from-gray-200 to-gray-300"></div>
+    <div className="p-6">
+      <div className="flex justify-between items-start mb-3">
+        <div className="h-6 bg-gray-300 rounded w-3/4"></div>
+        <div className="h-6 bg-gray-300 rounded w-1/4"></div>
+      </div>
+      <div className="flex gap-1 mb-4">
+        {[...Array(5)].map((_, i) => (
+          <div key={i} className="w-4 h-4 bg-gray-300 rounded"></div>
+        ))}
+      </div>
+      <div className="h-12 bg-gray-300 rounded-xl"></div>
+    </div>
+  </div>
+);
+
+// Enhanced Testimonial Card
+const TestimonialCard = ({ testimonial, isActive }) => (
+  <div className={`transition-all duration-500 ${
+    isActive ? 'opacity-100 scale-100' : 'opacity-0 scale-95 absolute'
+  }`}>
+    <div className="bg-gradient-to-br from-red-50 via-orange-50 to-pink-50 rounded-3xl p-8 md:p-12 relative shadow-2xl border border-red-100">
+      <div className="absolute top-8 left-8 text-red-200 opacity-50">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M6 17h3l2-4V7H5v6h3zm8 0h3l2-4V7h-6v6h3z"/>
+        </svg>
+      </div>
+      
+      <div className="flex flex-col md:flex-row items-center gap-8 relative z-10">
+        <div className="relative">
+          <div className="absolute inset-0 bg-gradient-to-br from-red-500 to-orange-500 rounded-full blur-lg opacity-50"></div>
+          <img 
+            src={testimonial.image}
+            alt={testimonial.name}
+            className="relative w-28 h-28 rounded-full object-cover border-4 border-white shadow-2xl"
+          />
+        </div>
+        
+        <div className="flex-1 text-center md:text-left">
+          <div className="flex gap-1 mb-4 justify-center md:justify-start">
+            {[...Array(5)].map((_, i) => (
+              <Star 
+                key={i} 
+                className={`w-5 h-5 ${
+                  i < Math.floor(testimonial.rating) 
+                    ? 'fill-yellow-400 text-yellow-400' 
+                    : 'fill-gray-300 text-gray-300'
+                }`} 
+              />
+            ))}
+            <span className="text-sm text-gray-600 ml-2 font-medium">
+              {testimonial.rating}
+            </span>
+          </div>
+          
+          <p className="text-xl text-gray-700 mb-6 italic leading-relaxed font-medium">
+            "{testimonial.content}"
+          </p>
+          
+          <div>
+            <div className="font-bold text-gray-900 text-xl mb-1">
+              {testimonial.name}
+            </div>
+            <div className="text-red-500 font-medium">
+              {testimonial.role}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+);
+
+// Main Component
+const LandingPage = ({ onShowLogin, onShowRegister }) => {
+  const navigate = useNavigate();
+  
+  const handleShowLogin = () => navigate('/login');
+  const handleShowRegister = () => navigate('/register');
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [activeTestimonial, setActiveTestimonial] = useState(0);
+  const [isScrolled, setIsScrolled] = useState(false);
+  const scrollY = useScroll();
+  const { dishes: popularDishes, loading, error } = usePopularDishes();
+
+  // Enhanced scroll detection
+  useEffect(() => {
+    setIsScrolled(scrollY > 20);
+  }, [scrollY]);
+
+  // Features data
   const features = [
     {
       icon: <Clock className="w-8 h-8" />,
@@ -218,30 +307,32 @@ const LandingPage = ({ onShowLogin, onShowRegister }) => {
     }
   ];
 
+  // Testimonials data
   const testimonials = [
     {
-      name: "Dr. Akshata Bhat",
+      name: "Virat Kholi",
       role: "Food Enthusiast",
       content: "The best food delivery experience I've ever had! The biryani was absolutely delicious and arrived piping hot.",
-      rating: 5,
-      image: "https://vit.edu.in/wp-content/uploads/2023/06/DrAkshataBhat-12-1.jpg"
+      rating: 4.9,
+      image: "https://m.media-amazon.com/images/I/61CG8tD+GFL._AC_UF1000,1000_QL80_.jpg"
     },
     {
-      name: "Dr. Sangeeta Joshi",
+      name: "Rohit Sharma",
       role: "Frequent Diner",
       content: "Fast delivery and amazing taste. This is my go-to app for ordering food now! Customer service is top-notch.",
-      rating: 5,
-      image: "https://vit.edu.in/wp-content/uploads/2023/06/Principal1.png"
+      rating: 4.8,
+      image: "https://i.pinimg.com/1200x/15/8c/5d/158c5d325b1fdec4a989b60c9e750ec7.jpg"
     },
     {
-      name: "Dr. Arun Chavan",
+      name: "MS Dhoni",
       role: "Food Blogger",
       content: "Authentic flavors and consistent quality. Highly recommended! The variety is incredible and presentation is beautiful.",
-      rating: 5,
-      image: "https://vit.edu.in/wp-content/uploads/2023/06/Frame-3.png"
+      rating: 4.7,
+      image: "https://i.pinimg.com/736x/0b/e4/8f/0be48f15d7aa25fba1bdf3a899b7ee7b.jpg"
     }
   ];
 
+  // Auto-rotate testimonials
   useEffect(() => {
     const interval = setInterval(() => {
       setActiveTestimonial((prev) => (prev + 1) % testimonials.length);
@@ -249,44 +340,33 @@ const LandingPage = ({ onShowLogin, onShowRegister }) => {
     return () => clearInterval(interval);
   }, [testimonials.length]);
 
-  // Loading skeleton component
-  const DishSkeleton = () => (
-    <div className="bg-white rounded-3xl shadow-lg overflow-hidden animate-pulse">
-      <div className="w-full h-56 bg-gray-300"></div>
-      <div className="p-6">
-        <div className="flex justify-between items-start mb-3">
-          <div className="h-6 bg-gray-300 rounded w-3/4"></div>
-          <div className="h-6 bg-gray-300 rounded w-1/4"></div>
-        </div>
-        <div className="flex gap-1 mb-4">
-          {[...Array(5)].map((_, i) => (
-            <div key={i} className="w-4 h-4 bg-gray-300 rounded"></div>
-          ))}
-        </div>
-        <div className="h-12 bg-gray-300 rounded-xl"></div>
-      </div>
-    </div>
-  );
-
   const handleRetry = () => {
-    setLoading(true);
-    setError(null);
-    // Retry after a short delay
-    setTimeout(() => {
-      window.location.reload();
-    }, 1000);
+    window.location.reload();
+  };
+
+  const scrollToSection = (sectionId) => {
+    const element = document.getElementById(sectionId);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth' });
+    }
+    setIsMenuOpen(false);
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-orange-50">
-      {/* Navigation */}
+      {/* Enhanced Navigation */}
       <nav className={`fixed w-full z-50 transition-all duration-300 ${
-        scrollY > 50 ? 'bg-white/90 backdrop-blur-md shadow-lg' : 'bg-transparent'
+        isScrolled 
+          ? 'bg-white/95 backdrop-blur-lg shadow-lg border-b border-gray-100' 
+          : 'bg-transparent'
       }`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-20">
             {/* Logo */}
-            <div className="flex items-center group cursor-pointer">
+            <div 
+              className="flex items-center group cursor-pointer"
+              onClick={() => scrollToSection('home')}
+            >
               <div className="w-12 h-12 bg-gradient-to-br from-red-500 to-orange-500 rounded-xl flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all duration-300 group-hover:scale-110">
                 <span className="text-white font-bold text-2xl">F</span>
               </div>
@@ -297,28 +377,30 @@ const LandingPage = ({ onShowLogin, onShowRegister }) => {
 
             {/* Desktop Menu */}
             <div className="hidden md:flex items-center space-x-8">
-              {['Home', 'Features', 'Menu', 'Reviews', 'Contact'].map((item) => (
-                <a 
+              {['home', 'features', 'menu', 'reviews', 'contact'].map((item) => (
+                <button
                   key={item}
-                  href={`#${item.toLowerCase()}`} 
-                  className="text-gray-700 hover:text-red-500 transition-all duration-300 font-medium relative group"
+                  onClick={() => scrollToSection(item)}
+                  className="text-gray-700 hover:text-red-500 transition-all duration-300 font-medium relative group capitalize"
                 >
                   {item}
                   <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-red-500 to-orange-500 group-hover:w-full transition-all duration-300"></span>
-                </a>
+                </button>
               ))}
             </div>
 
             {/* CTA Buttons */}
             <div className="hidden md:flex items-center gap-4">
               <button 
-                onClick={onShowLogin}
-                className="px-6 py-3 bg-gradient-to-r from-red-500 to-orange-500 text-white rounded-xl hover:shadow-lg hover:scale-105 transition-all duration-300 font-semibold flex items-center gap-2"
+                onClick={handleShowLogin}
+                className="px-6 py-3 bg-gradient-to-r from-red-500 to-orange-500 text-white rounded-xl hover:shadow-lg hover:scale-105 transition-all duration-300 font-semibold flex items-center gap-2 group"
               >
-                Order Now <ArrowRight className="w-4 h-4" />
+                <ShoppingCart className="w-4 h-4" />
+                Order Now 
+                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </button>
               <button 
-                onClick={onShowRegister}
+                onClick={handleShowRegister}
                 className="px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-xl hover:border-red-500 hover:text-red-500 hover:bg-red-50 transition-all duration-300 font-semibold"
               >
                 View Menu
@@ -329,34 +411,35 @@ const LandingPage = ({ onShowLogin, onShowRegister }) => {
             <button 
               className="md:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors"
               onClick={() => setIsMenuOpen(!isMenuOpen)}
+              aria-label="Toggle menu"
             >
               {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
             </button>
           </div>
 
-          {/* Mobile Menu */}
+          {/* Enhanced Mobile Menu */}
           {isMenuOpen && (
-            <div className="md:hidden py-6 border-t border-gray-200 bg-white/95 backdrop-blur-md rounded-b-2xl">
+            <div className="md:hidden py-6 border-t border-gray-200 bg-white/95 backdrop-blur-md rounded-b-2xl shadow-xl">
               <div className="flex flex-col space-y-4">
-                {['Home', 'Features', 'Menu', 'Reviews', 'Contact'].map((item) => (
-                  <a 
+                {['home', 'features', 'menu', 'reviews', 'contact'].map((item) => (
+                  <button
                     key={item}
-                    href={`#${item.toLowerCase()}`} 
-                    className="text-gray-700 hover:text-red-500 transition-colors py-2 px-4 hover:bg-red-50 rounded-lg"
-                    onClick={() => setIsMenuOpen(false)}
+                    onClick={() => scrollToSection(item)}
+                    className="text-gray-700 hover:text-red-500 transition-colors py-3 px-4 hover:bg-red-50 rounded-lg text-left font-medium capitalize"
                   >
                     {item}
-                  </a>
+                  </button>
                 ))}
-                <div className="flex flex-col space-y-3 pt-4">
+                <div className="flex flex-col space-y-3 pt-4 border-t border-gray-200">
                   <button 
-                    onClick={onShowLogin}
-                    className="py-3 bg-gradient-to-r from-red-500 to-orange-500 text-white rounded-xl hover:shadow-lg transition-all font-semibold"
+                    onClick={handleShowLogin}
+                    className="py-3 bg-gradient-to-r from-red-500 to-orange-500 text-white rounded-xl hover:shadow-lg transition-all font-semibold flex items-center justify-center gap-2"
                   >
+                    <ShoppingCart className="w-4 h-4" />
                     Order Now
                   </button>
                   <button 
-                    onClick={onShowRegister}
+                    onClick={handleShowRegister}
                     className="py-3 border-2 border-gray-300 text-gray-700 rounded-xl hover:border-red-500 transition-all font-semibold"
                   >
                     View Menu
@@ -368,7 +451,7 @@ const LandingPage = ({ onShowLogin, onShowRegister }) => {
         </div>
       </nav>
 
-      {/* Hero Section */}
+      {/* Enhanced Hero Section */}
       <section id="home" className="pt-32 pb-20 relative overflow-hidden">
         {/* Animated Background Elements */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -388,44 +471,46 @@ const LandingPage = ({ onShowLogin, onShowRegister }) => {
               
               <h1 className="text-5xl md:text-7xl font-extrabold text-gray-900 leading-tight mb-6">
                 Skip The Queue,
-                <span className="block bg-gradient-to-r from-red-500 via-orange-500 to-red-500 bg-clip-text text-transparent animate-pulse">
+                <span className="block bg-gradient-to-r from-red-500 via-orange-500 to-red-500 bg-clip-text text-transparent animate-gradient">
                   Order to Your Room
                 </span>
               </h1>
               
-              <p className="text-xl text-gray-600 mb-8 leading-relaxed">
+              <p className="text-xl text-gray-600 mb-8 leading-relaxed max-w-2xl">
                 No more waiting in canteen lines! Get hot, delicious meals delivered 
-                straight to your hostel room, lab, or anywhere on campus.
+                straight to your hostel room, lab, or anywhere on campus within minutes.
               </p>
               
               <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start mb-12">
                 <button 
-                  onClick={onShowLogin}
-                  className="group px-8 py-4 bg-gradient-to-r from-red-500 to-orange-500 text-white rounded-xl hover:shadow-2xl transition-all duration-300 font-semibold flex items-center justify-center gap-2 hover:scale-105"
+                  onClick={handleShowLogin}
+                  className="group px-8 py-4 bg-gradient-to-r from-red-500 to-orange-500 text-white rounded-xl hover:shadow-2xl transition-all duration-300 font-semibold flex items-center justify-center gap-2 hover:scale-105 shadow-lg"
                 >
+                  <ShoppingCart className="w-5 h-5" />
                   Order Now 
                   <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                 </button>
                 <button 
-                  onClick={onShowRegister}
-                  className="px-8 py-4 border-2 border-gray-300 text-gray-700 rounded-xl hover:border-red-500 hover:text-red-500 hover:bg-red-50 transition-all duration-300 font-semibold"
+                  onClick={() => scrollToSection('menu')}
+                  className="px-8 py-4 border-2 border-gray-300 text-gray-700 rounded-xl hover:border-red-500 hover:text-red-500 hover:bg-red-50 transition-all duration-300 font-semibold group"
                 >
                   View Menu
+                  <ChevronDown className="w-4 h-4 inline ml-2 group-hover:translate-y-1 transition-transform" />
                 </button>
               </div>
 
               {/* Enhanced Stats */}
-              <div className="grid grid-cols-3 gap-6">
+              <div className="grid grid-cols-3 gap-6 max-w-md">
                 {[
                   { value: '1000+', label: 'Students Ordering', icon: Users },
                   { value: '5', label: 'Campus Canteens', icon: Award },
                   { value: '10min', label: 'Avg. Delivery', icon: TrendingUp }
                 ].map((stat, idx) => (
                   <div key={idx} className="text-center group cursor-pointer">
-                    <div className="inline-flex items-center justify-center w-12 h-12 bg-gradient-to-br from-red-100 to-orange-100 rounded-xl mb-2 group-hover:scale-110 transition-transform">
+                    <div className="inline-flex items-center justify-center w-12 h-12 bg-gradient-to-br from-red-100 to-orange-100 rounded-xl mb-2 group-hover:scale-110 transition-transform shadow-sm">
                       <stat.icon className="w-6 h-6 text-red-500" />
                     </div>
-                    <div className="text-3xl font-bold bg-gradient-to-r from-red-500 to-orange-500 bg-clip-text text-transparent">
+                    <div className="text-2xl font-bold bg-gradient-to-r from-red-500 to-orange-500 bg-clip-text text-transparent">
                       {stat.value}
                     </div>
                     <div className="text-sm text-gray-600 font-medium">{stat.label}</div>
@@ -434,19 +519,19 @@ const LandingPage = ({ onShowLogin, onShowRegister }) => {
               </div>
             </div>
 
-            {/* Hero Image */}
+            {/* Enhanced Hero Image */}
             <div className="relative">
               <div className="relative z-10 group">
                 <div className="absolute inset-0 bg-gradient-to-r from-red-500 to-orange-500 rounded-3xl blur-2xl opacity-20 group-hover:opacity-30 transition-opacity"></div>
                 <img 
-                  src="https://images.unsplash.com/photo-1565299624946-b28f40a0ca4b?w=600&h=600&fit=crop" 
+                  src="https://images.unsplash.com/photo-1565299624946-b28f40a0ca4b?w=600&h=600&fit=crop&auto=format" 
                   alt="Delicious Food"
-                  className="relative rounded-3xl shadow-2xl group-hover:scale-105 transition-all duration-500"
+                  className="relative rounded-3xl shadow-2xl group-hover:scale-105 transition-all duration-500 w-full"
                 />
               </div>
               
               {/* Enhanced Floating Cards */}
-              <div className="absolute -top-4 -left-4 bg-white p-5 rounded-2xl shadow-2xl z-20 hover:scale-110 transition-all duration-300 cursor-pointer border border-green-100">
+              <div className="absolute -top-4 -left-4 bg-white p-5 rounded-2xl shadow-2xl z-20 hover:scale-110 transition-all duration-300 cursor-pointer border border-green-100 animate-float">
                 <div className="flex items-center gap-3">
                   <div className="w-14 h-14 bg-gradient-to-br from-green-400 to-emerald-500 rounded-xl flex items-center justify-center shadow-lg">
                     <CheckCircle className="w-7 h-7 text-white" />
@@ -458,7 +543,7 @@ const LandingPage = ({ onShowLogin, onShowRegister }) => {
                 </div>
               </div>
               
-              <div className="absolute -bottom-4 -right-4 bg-white p-5 rounded-2xl shadow-2xl z-20 hover:scale-110 transition-all duration-300 cursor-pointer border border-blue-100">
+              <div className="absolute -bottom-4 -right-4 bg-white p-5 rounded-2xl shadow-2xl z-20 hover:scale-110 transition-all duration-300 cursor-pointer border border-blue-100 animate-float" style={{animationDelay: '1s'}}>
                 <div className="flex items-center gap-3">
                   <div className="w-14 h-14 bg-gradient-to-br from-blue-400 to-cyan-500 rounded-xl flex items-center justify-center shadow-lg">
                     <Truck className="w-7 h-7 text-white" />
@@ -474,7 +559,7 @@ const LandingPage = ({ onShowLogin, onShowRegister }) => {
         </div>
       </section>
 
-      {/* Features Section */}
+      {/* Enhanced Features Section */}
       <section id="features" className="py-24 bg-white relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-b from-gray-50 to-white"></div>
         
@@ -517,7 +602,7 @@ const LandingPage = ({ onShowLogin, onShowRegister }) => {
         </div>
       </section>
 
-      {/* Popular Dishes Section */}
+      {/* Enhanced Popular Dishes Section */}
       <section id="menu" className="py-24 bg-gradient-to-b from-white to-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
@@ -541,6 +626,9 @@ const LandingPage = ({ onShowLogin, onShowRegister }) => {
             </div>
           ) : error ? (
             <div className="text-center py-12">
+              <div className="w-24 h-24 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                <X className="w-12 h-12 text-red-500" />
+              </div>
               <div className="text-red-500 mb-4 text-lg font-semibold">
                 Failed to load dishes
               </div>
@@ -561,17 +649,18 @@ const LandingPage = ({ onShowLogin, onShowRegister }) => {
               </div>
               <button 
                 onClick={handleRetry}
-                className="px-6 py-3 bg-gradient-to-r from-red-500 to-orange-500 text-white rounded-xl hover:shadow-lg transition-all font-semibold"
+                className="px-6 py-3 bg-gradient-to-r from-red-500 to-orange-500 text-white rounded-xl hover:shadow-lg transition-all font-semibold flex items-center gap-2 mx-auto"
               >
+                <Sparkles className="w-4 h-4" />
                 Retry Connection
               </button>
             </div>
           ) : (
             <>
               <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
-                {popularDishes.map((dish, index) => (
+                {popularDishes.map((dish) => (
                   <div 
-                    key={index}
+                    key={dish.id}
                     className="bg-white rounded-3xl shadow-lg hover:shadow-2xl transition-all duration-500 overflow-hidden group hover:-translate-y-2"
                   >
                     <div className="relative overflow-hidden">
@@ -579,6 +668,7 @@ const LandingPage = ({ onShowLogin, onShowRegister }) => {
                         src={dish.image} 
                         alt={dish.name}
                         className="w-full h-56 object-cover group-hover:scale-110 transition-transform duration-700"
+                        loading="lazy"
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                       <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-sm text-gray-900 px-3 py-1 rounded-full text-sm font-semibold shadow-lg">
@@ -601,10 +691,23 @@ const LandingPage = ({ onShowLogin, onShowRegister }) => {
                       
                       <div className="flex items-center gap-1 mb-4">
                         {[...Array(5)].map((_, i) => (
-                          <Star key={i} className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                          <Star 
+                            key={i} 
+                            className={`w-4 h-4 ${
+                              i < Math.floor(dish.rating) 
+                                ? 'fill-yellow-400 text-yellow-400' 
+                                : 'fill-gray-300 text-gray-300'
+                            }`} 
+                          />
                         ))}
-                        <span className="text-sm text-gray-600 ml-2 font-medium">(48)</span>
+                        <span className="text-sm text-gray-600 ml-2 font-medium">
+                          ({Math.round(dish.rating * 10)})
+                        </span>
                       </div>
+                      
+                      <p className="text-gray-600 text-sm mb-4 line-clamp-2">
+                        {dish.description}
+                      </p>
                       
                       <button className="w-full bg-gradient-to-r from-gray-100 to-gray-50 text-gray-700 py-3 rounded-xl hover:from-red-500 hover:to-orange-500 hover:text-white transition-all duration-300 flex items-center justify-center gap-2 font-semibold group/btn shadow-sm hover:shadow-lg">
                         Add to Cart 
@@ -617,8 +720,8 @@ const LandingPage = ({ onShowLogin, onShowRegister }) => {
 
               <div className="text-center mt-16">
                 <button 
-                  onClick={onShowRegister}
-                  className="px-10 py-4 bg-gradient-to-r from-red-500 to-orange-500 text-white rounded-xl hover:shadow-2xl transition-all duration-300 flex items-center gap-2 mx-auto font-semibold hover:scale-105"
+                  onClick={handleShowRegister}
+                  className="px-10 py-4 bg-gradient-to-r from-red-500 to-orange-500 text-white rounded-xl hover:shadow-2xl transition-all duration-300 flex items-center gap-2 mx-auto font-semibold hover:scale-105 shadow-lg"
                 >
                   View Full Menu <ChevronRight className="w-5 h-5" />
                 </button>
@@ -628,7 +731,7 @@ const LandingPage = ({ onShowLogin, onShowRegister }) => {
         </div>
       </section>
 
-      {/* Testimonials */}
+      {/* Enhanced Testimonials Section */}
       <section id="reviews" className="py-24 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
@@ -645,47 +748,26 @@ const LandingPage = ({ onShowLogin, onShowRegister }) => {
           </div>
 
           <div className="max-w-5xl mx-auto">
-            <div className="bg-gradient-to-br from-red-50 via-orange-50 to-pink-50 rounded-3xl p-8 md:p-12 relative shadow-2xl border border-red-100">
-              <div className="absolute top-8 left-8 text-red-200 opacity-50">
-                <svg width="48" height="48" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M6 17h3l2-4V7H5v6h3zm8 0h3l2-4V7h-6v6h3z"/>
-                </svg>
-              </div>
-              
-              <div className="flex flex-col md:flex-row items-center gap-8 relative z-10">
-                <div className="relative">
-                  <div className="absolute inset-0 bg-gradient-to-br from-red-500 to-orange-500 rounded-full blur-lg opacity-50"></div>
-                  <img 
-                    src={testimonials[activeTestimonial].image}
-                    alt={testimonials[activeTestimonial].name}
-                    className="relative w-28 h-28 rounded-full object-cover border-4 border-white shadow-2xl"
-                  />
-                </div>
-                
-                <div className="flex-1 text-center md:text-left">
-                  <div className="flex gap-1 mb-4 justify-center md:justify-start">
-                    {[...Array(testimonials[activeTestimonial].rating)].map((_, i) => (
-                      <Star key={i} className="w-5 h-5 fill-yellow-400 text-yellow-400" />
-                    ))}
-                  </div>
-                  
-                  <p className="text-xl text-gray-700 mb-6 italic leading-relaxed font-medium">
-                    "{testimonials[activeTestimonial].content}"
-                  </p>
-                  
-                  <div>
-                    <div className="font-bold text-gray-900 text-xl mb-1">
-                      {testimonials[activeTestimonial].name}
-                    </div>
-                    <div className="text-red-500 font-medium">
-                      {testimonials[activeTestimonial].role}
-                    </div>
-                  </div>
-                </div>
-              </div>
+            <div className="relative h-96">
+              {testimonials.map((testimonial, index) => (
+                <TestimonialCard
+                  key={index}
+                  testimonial={testimonial}
+                  isActive={index === activeTestimonial}
+                />
+              ))}
+            </div>
 
-              {/* Enhanced Navigation */}
-              <div className="flex justify-center mt-10 gap-3">
+            {/* Enhanced Navigation */}
+            <div className="flex justify-center mt-10 gap-4 items-center">
+              <button
+                onClick={() => setActiveTestimonial((prev) => (prev - 1 + testimonials.length) % testimonials.length)}
+                className="p-3 bg-gray-100 rounded-xl hover:bg-red-500 hover:text-white transition-all duration-300"
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+              
+              <div className="flex gap-3">
                 {testimonials.map((_, index) => (
                   <button
                     key={index}
@@ -698,12 +780,19 @@ const LandingPage = ({ onShowLogin, onShowRegister }) => {
                   />
                 ))}
               </div>
+              
+              <button
+                onClick={() => setActiveTestimonial((prev) => (prev + 1) % testimonials.length)}
+                className="p-3 bg-gray-100 rounded-xl hover:bg-red-500 hover:text-white transition-all duration-300"
+              >
+                <ChevronRight className="w-5 h-5" />
+              </button>
             </div>
           </div>
         </div>
       </section>
 
-      {/* CTA Section */}
+      {/* Enhanced CTA Section */}
       <section className="py-24 bg-gradient-to-r from-red-500 via-orange-500 to-red-500 relative overflow-hidden">
         <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmZmZmYiIGZpbGwtb3BhY2l0eT0iMC4xIj48cGF0aCBkPSJNMzYgMzRjMC0yLjIxLTEuNzktNC00LTRzLTQgMS43OS00IDQgMS43OSA0IDQgNCA0LTEuNzkgNC00em0wLTEwYzAtMi4yMS0xLjc5LTQtNC00cy00IDEuNzktNCA0IDEuNzkgNCA0IDQgNC0xLjc5IDQtNHoiLz48L2c+PC9nPjwvc3ZnPg==')] opacity-10"></div>
         
@@ -722,17 +811,22 @@ const LandingPage = ({ onShowLogin, onShowRegister }) => {
           </p>
           
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <button className="px-10 py-4 bg-white text-red-500 rounded-xl hover:bg-gray-100 hover:scale-105 transition-all duration-300 shadow-2xl font-bold text-lg">
+            <button className="px-10 py-4 bg-white text-red-500 rounded-xl hover:bg-gray-100 hover:scale-105 transition-all duration-300 shadow-2xl font-bold text-lg flex items-center gap-2 justify-center">
+              <Download className="w-5 h-5" />
               Download App
             </button>
-            <button className="px-10 py-4 border-2 border-white text-white rounded-xl hover:bg-white hover:text-red-500 transition-all duration-300 font-bold text-lg">
+            <button 
+              onClick={handleShowLogin}
+              className="px-10 py-4 border-2 border-white text-white rounded-xl hover:bg-white hover:text-red-500 transition-all duration-300 font-bold text-lg flex items-center gap-2 justify-center"
+            >
+              <ShoppingCart className="w-5 h-5" />
               Order Online
             </button>
           </div>
         </div>
       </section>
 
-      {/* Footer */}
+      {/* Enhanced Footer */}
       <footer id="contact" className="bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid md:grid-cols-4 gap-12 mb-12">
@@ -748,40 +842,24 @@ const LandingPage = ({ onShowLogin, onShowRegister }) => {
                 Delivering delicious food with love and care. Experience the best of Indian cuisine with our fast and reliable delivery service.
               </p>
               <div className="flex gap-4">
-                <a
-                  href="https://www.linkedin.com/in/kartikean-budarap-29722b2b1/"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-12 h-12 bg-gray-800 rounded-xl flex items-center justify-center hover:bg-gradient-to-br hover:from-red-500 hover:to-orange-500 transition-all duration-300 hover:scale-110 hover:shadow-lg"
-                >
-                  <Linkedin className="w-5 h-5" />
-                </a>
-                <a
-                  href="#"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-12 h-12 bg-  gray-800 rounded-xl flex items-center justify-center hover:bg-gradient-to-br hover:from-red-500 hover:to-orange-500 transition-all duration-300 hover:scale-110 hover:shadow-lg"
-                >
-                  <Twitter className="w-5 h-5" />
-                </a>
-                <a
-                  href="#"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-12 h-12 bg-gray-800 rounded-xl flex items-center justify-center hover:bg-gradient-to-br hover:from-red-500 hover:to-orange-500 transition-all duration-300 hover:scale-110 hover:shadow-lg"
-                >
-                  <Instagram className="w-5 h-5" />
-                </a>
-                <a
-                  href="https://github.com/kartikbudarap/Mini_Project_Sem5.git"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-12 h-12 bg-gray-800 rounded-xl flex items-center justify-center hover:bg-gradient-to-br hover:from-red-500 hover:to-orange-500 transition-all duration-300 hover:scale-110 hover:shadow-lg"
-                >
-                  <Github className="w-5 h-5" />
-                </a>
+                {[
+                  { icon: Facebook, href: "#" },
+                  { icon: Twitter, href: "#" },
+                  { icon: Instagram, href: "#" },
+                  { icon: Linkedin, href: "https://www.linkedin.com/in/kartikean-budarap-29722b2b1/" },
+                  { icon: Github, href: "https://github.com/kartikbudarap/Mini_Project_Sem5.git" }
+                ].map((social, index) => (
+                  <a
+                    key={index}
+                    href={social.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-12 h-12 bg-gray-800 rounded-xl flex items-center justify-center hover:bg-gradient-to-br hover:from-red-500 hover:to-orange-500 transition-all duration-300 hover:scale-110 hover:shadow-lg"
+                  >
+                    <social.icon className="w-5 h-5" />
+                  </a>
+                ))}
               </div>
-
             </div>
 
             {/* Quick Links */}
@@ -790,10 +868,13 @@ const LandingPage = ({ onShowLogin, onShowRegister }) => {
               <ul className="space-y-3">
                 {['Home', 'Menu', 'Features', 'Reviews', 'Contact'].map((link) => (
                   <li key={link}>
-                    <a href={`#${link.toLowerCase()}`} className="text-gray-400 hover:text-white transition-colors flex items-center gap-2 group">
+                    <button 
+                      onClick={() => scrollToSection(link.toLowerCase())}
+                      className="text-gray-400 hover:text-white transition-colors flex items-center gap-2 group"
+                    >
                       <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                       {link}
-                    </a>
+                    </button>
                   </li>
                 ))}
               </ul>
@@ -803,24 +884,18 @@ const LandingPage = ({ onShowLogin, onShowRegister }) => {
             <div>
               <h3 className="text-lg font-bold mb-6 bg-gradient-to-r from-red-400 to-orange-400 bg-clip-text text-transparent">Contact Us</h3>
               <div className="space-y-4">
-                <div className="flex items-center gap-3 text-gray-400 hover:text-white transition-colors cursor-pointer group">
-                  <div className="w-10 h-10 bg-gray-800 rounded-lg flex items-center justify-center group-hover:bg-gradient-to-br group-hover:from-red-500 group-hover:to-orange-500 transition-all">
-                    <Phone className="w-5 h-5" />
+                {[
+                  { icon: Phone, text: '+91 9876543210' },
+                  { icon: Mail, text: 'hello@foodexpress.com' },
+                  { icon: MapPin, text: 'Mumbai, Maharashtra' }
+                ].map((contact, index) => (
+                  <div key={index} className="flex items-center gap-3 text-gray-400 hover:text-white transition-colors cursor-pointer group">
+                    <div className="w-10 h-10 bg-gray-800 rounded-lg flex items-center justify-center group-hover:bg-gradient-to-br group-hover:from-red-500 group-hover:to-orange-500 transition-all">
+                      <contact.icon className="w-5 h-5" />
+                    </div>
+                    <span>{contact.text}</span>
                   </div>
-                  <span>+91 9876543210</span>
-                </div>
-                <div className="flex items-center gap-3 text-gray-400 hover:text-white transition-colors cursor-pointer group">
-                  <div className="w-10 h-10 bg-gray-800 rounded-lg flex items-center justify-center group-hover:bg-gradient-to-br group-hover:from-red-500 group-hover:to-orange-500 transition-all">
-                    <Mail className="w-5 h-5" />
-                  </div>
-                  <span>hello@foodexpress.com</span>
-                </div>
-                <div className="flex items-center gap-3 text-gray-400 hover:text-white transition-colors cursor-pointer group">
-                  <div className="w-10 h-10 bg-gray-800 rounded-lg flex items-center justify-center group-hover:bg-gradient-to-br group-hover:from-red-500 group-hover:to-orange-500 transition-all">
-                    <MapPin className="w-5 h-5" />
-                  </div>
-                  <span>Mumbai, Maharashtra</span>
-                </div>
+                ))}
               </div>
             </div>
           </div>
@@ -834,6 +909,32 @@ const LandingPage = ({ onShowLogin, onShowRegister }) => {
           </div>
         </div>
       </footer>
+
+      {/* Add custom styles for animations */}
+      <style jsx>{`
+        @keyframes float {
+          0%, 100% { transform: translateY(0px); }
+          50% { transform: translateY(-10px); }
+        }
+        @keyframes gradient {
+          0% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+          100% { background-position: 0% 50%; }
+        }
+        .animate-float {
+          animation: float 3s ease-in-out infinite;
+        }
+        .animate-gradient {
+          background-size: 200% 200%;
+          animation: gradient 3s ease infinite;
+        }
+        .line-clamp-2 {
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+        }
+      `}</style>
     </div>
   );
 };
