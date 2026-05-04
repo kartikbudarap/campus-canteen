@@ -68,7 +68,7 @@ const orderSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// ✅ FIXED: Generate order number before saving - handle bulk insert
+// FIXED: Generate order number before saving - handle bulk insert
 orderSchema.pre('save', async function(next) {
   if (this.isNew && !this.orderNumber) {
     try {

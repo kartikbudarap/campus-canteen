@@ -1,19 +1,17 @@
 import React, { useState, useEffect } from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useLocation } from "react-router-dom";
-import { ChefHat, ShoppingBag, User, LogOut, LogIn, UserPlus, AlertCircle } from "lucide-react";
-// import AdminDashboard from "./components/adminDashboard";
-// import SellerDashboard from "./components/sellerDashboard";
-// import UserDashboard from "./components/userDashboard";
+import { AlertCircle } from "lucide-react";
 import RegisterWithOTP from "./components/RegisterWithOTP";
 import Login from "./components/Login";
 import ForgotPassword from "./components/ForgotPassword";
 import VerifyEmail from "./components/VerifyEmail";
 import { DashboardProvider } from "./context/DashboardContext";
 import LandingPage from './components/LandingPage';
-// In App.jsx, replace the direct imports with:
 import UserDashboard from './components/dashboard/user/UserDashboard';
 import AdminDashboard from './components/dashboard/admin/AdminDashboard';
 import SellerDashboard from './components/dashboard/seller/SellerDashboard';
+import AuthLayout from './components/layouts/AuthLayout';
+import Toast from './components/ui/Toast';
 
 function AppContent() {
   const [currentUser, setCurrentUser] = useState(null);
@@ -57,7 +55,7 @@ function AppContent() {
     try {
       setLoading(true);
       
-      const response = await fetch('http://localhost:5000/api/auth/register', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -102,7 +100,7 @@ function AppContent() {
     try {
       setLoading(true);
       
-      const response = await fetch('http://localhost:5000/api/auth/login', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -149,7 +147,7 @@ function AppContent() {
   const handleResendVerification = async () => {
     try {
       setLoading(true);
-      const response = await fetch('http://localhost:5000/api/auth/resend-verification', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/resend-verification`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -220,10 +218,10 @@ function AppContent() {
   // Show loading while checking auth
   if (!authChecked) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="bg-white p-8 rounded-xl shadow-lg flex items-center gap-3">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-500"></div>
-          <p className="text-gray-700">Checking authentication...</p>
+      <div className="min-h-screen bg-surface-50 flex items-center justify-center">
+        <div className="bg-white p-8 rounded-2xl shadow-lg flex items-center gap-4">
+          <div className="w-8 h-8 border-4 border-brand-100 border-t-brand-500 rounded-full animate-spin"></div>
+          <p className="text-surface-700 font-medium">Checking authentication...</p>
         </div>
       </div>
     );
@@ -231,26 +229,14 @@ function AppContent() {
 
   return (
     <DashboardProvider>
-      {/* Notification Toast */}
-      {notification && (
-        <div className={`fixed top-5 right-5 z-50 px-6 py-4 rounded-xl shadow-lg flex items-center gap-3 animate-fade-in-down border ${
-          notification.type === "success" 
-            ? "bg-green-500 text-white border-green-400" 
-            : "bg-red-500 text-white border-red-400"
-        }`}>
-          <div className="w-5 h-5 bg-white/20 rounded-full flex items-center justify-center">
-            <span className="text-sm">{notification.type === "success" ? "✓" : "!"}</span>
-          </div>
-          <span className="font-medium">{notification.message}</span>
-        </div>
-      )}
+      <Toast notification={notification} onClose={() => setNotification(null)} />
 
       {/* Loading Overlay */}
       {loading && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-xl shadow-lg flex items-center gap-3">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-500"></div>
-            <p className="text-gray-700">Loading...</p>
+        <div className="fixed inset-0 bg-surface-900/40 backdrop-blur-sm flex items-center justify-center z-[100] animate-fade-in">
+          <div className="bg-white p-6 rounded-2xl shadow-2xl flex items-center gap-4 animate-scale-in">
+            <div className="w-8 h-8 border-4 border-brand-100 border-t-brand-500 rounded-full animate-spin"></div>
+            <p className="text-surface-900 font-semibold">Please wait...</p>
           </div>
         </div>
       )}
@@ -265,30 +251,38 @@ function AppContent() {
         
         <Route path="/login" element={
           <PublicRoute>
-            <Login onLogin={handleLogin} />
+            <AuthLayout>
+              <Login onLogin={handleLogin} />
+            </AuthLayout>
           </PublicRoute>
         } />
         
         <Route path="/register" element={
           <PublicRoute>
-            <RegisterWithOTP onRegister={handleRegister} />
+            <AuthLayout>
+              <RegisterWithOTP onRegister={handleRegister} />
+            </AuthLayout>
           </PublicRoute>
         } />
         
         <Route path="/forgot-password" element={
           <PublicRoute>
-            <ForgotPassword />
+            <AuthLayout>
+              <ForgotPassword />
+            </AuthLayout>
           </PublicRoute>
         } />
 
         <Route path="/verify-email" element={
           <PublicRoute>
-            <VerifyEmail 
-              userEmail={pendingVerification?.email} 
-              onVerificationComplete={handleVerificationComplete}
-              onResendEmail={handleResendVerification}
-              tempToken={pendingVerification?.tempToken}
-            />
+            <AuthLayout>
+              <VerifyEmail 
+                userEmail={pendingVerification?.email} 
+                onVerificationComplete={handleVerificationComplete}
+                onResendEmail={handleResendVerification}
+                tempToken={pendingVerification?.tempToken}
+              />
+            </AuthLayout>
           </PublicRoute>
         } />
 
@@ -313,16 +307,18 @@ function AppContent() {
 
         {/* Utility Routes */}
         <Route path="/unauthorized" element={
-          <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-            <div className="bg-white p-8 rounded-xl shadow-lg text-center">
-              <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">Unauthorized</h2>
-              <p className="text-gray-600 mb-4">You don't have permission to access this page.</p>
+          <div className="min-h-screen bg-surface-50 flex items-center justify-center p-4">
+            <div className="bg-white p-8 rounded-3xl shadow-xl text-center max-w-sm w-full animate-scale-in">
+              <div className="w-16 h-16 bg-red-50 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                <AlertCircle className="w-8 h-8 text-red-500" />
+              </div>
+              <h2 className="text-2xl font-bold text-surface-900 mb-2 tracking-tight">Access Denied</h2>
+              <p className="text-surface-500 mb-8">You don't have permission to view this page.</p>
               <button 
                 onClick={() => navigate("/")}
-                className="bg-red-500 hover:bg-red-600 text-white px-6 py-2 rounded-xl transition-all duration-200"
+                className="w-full bg-surface-900 hover:bg-surface-800 text-white px-6 py-3.5 rounded-xl font-semibold transition-all duration-200"
               >
-                Go Home
+                Return to Home
               </button>
             </div>
           </div>
@@ -330,50 +326,21 @@ function AppContent() {
 
         {/* 404 Route */}
         <Route path="*" element={
-          <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-            <div className="bg-white p-8 rounded-xl shadow-lg text-center">
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">Page Not Found</h2>
-              <p className="text-gray-600 mb-4">The page you're looking for doesn't exist.</p>
+          <div className="min-h-screen bg-surface-50 flex items-center justify-center p-4">
+            <div className="bg-white p-8 rounded-3xl shadow-xl text-center max-w-sm w-full animate-scale-in">
+              <h2 className="text-4xl font-black text-surface-200 mb-2">404</h2>
+              <h3 className="text-xl font-bold text-surface-900 mb-2">Page not found</h3>
+              <p className="text-surface-500 mb-8">The page you're looking for doesn't exist or has been moved.</p>
               <button 
                 onClick={() => navigate("/")}
-                className="bg-red-500 hover:bg-red-600 text-white px-6 py-2 rounded-xl transition-all duration-200"
+                className="w-full bg-brand-500 hover:bg-brand-600 text-white px-6 py-3.5 rounded-xl font-semibold transition-all duration-200"
               >
-                Go Home
+                Return to Home
               </button>
             </div>
           </div>
         } />
       </Routes>
-
-      {/* Auth Navigation - Show on auth pages */}
-      {(location.pathname === '/login' || location.pathname === '/register' || location.pathname === '/forgot-password' || location.pathname === '/verify-email') && (
-        <div className="fixed top-5 left-5 flex gap-3">
-          {location.pathname !== '/login' && (
-            <button
-              onClick={() => navigate('/login')}
-              className="px-4 py-2 rounded-xl font-medium transition-all duration-200 border bg-white border-gray-300 text-gray-700 hover:border-red-300 hover:bg-red-50"
-            >
-              <LogIn className="w-4 h-4 inline mr-2" />
-              Login
-            </button>
-          )}
-          {location.pathname !== '/register' && (
-            <button
-              onClick={() => navigate('/register')}
-              className="px-4 py-2 rounded-xl font-medium transition-all duration-200 border bg-white border-gray-300 text-gray-700 hover:border-red-300 hover:bg-red-50"
-            >
-              <UserPlus className="w-4 h-4 inline mr-2" />
-              Register
-            </button>
-          )}
-          <button
-            onClick={() => navigate('/')}
-            className="px-4 py-2 rounded-xl font-medium transition-all duration-200 border bg-white border-gray-300 text-gray-700 hover:border-red-300 hover:bg-red-50"
-          >
-            ← Back to Home
-          </button>
-        </div>
-      )}
     </DashboardProvider>
   );
 }

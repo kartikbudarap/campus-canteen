@@ -218,7 +218,7 @@ export default function UserDashboard({ onLogout }) {
   const handleSaveProfile = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/users/profile', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/users/profile`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -322,20 +322,20 @@ export default function UserDashboard({ onLogout }) {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="min-h-screen bg-surface-50 flex overflow-hidden">
       <Sidebar
         sidebarOpen={sidebarOpen}
+        setSidebarOpen={setSidebarOpen}
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         navItems={navItems}
         userProfile={userProfile}
         cart={cart}
         onLogout={onLogout}
-        title="Food Ordering"
-        subtitle={`Welcome, ${userProfile.fullName || userProfile.fullname || 'User'}!`}
+        role="user"
       />
 
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
         <Header
           sidebarOpen={sidebarOpen}
           setSidebarOpen={setSidebarOpen}
@@ -344,12 +344,15 @@ export default function UserDashboard({ onLogout }) {
           userProfile={userProfile}
           cart={cart}
           setActiveTab={setActiveTab}
+          role="user"
         />
 
-        <div className="flex-1 p-6 overflow-auto">
+        <main className="flex-1 overflow-x-hidden overflow-y-auto bg-surface-50 p-4 sm:p-6 lg:p-8">
           <Notification notification={notification} />
-          {renderContent()}
-        </div>
+          <div className="max-w-7xl mx-auto space-y-6 animate-fade-in-up">
+            {renderContent()}
+          </div>
+        </main>
       </div>
 
       <StripePayment

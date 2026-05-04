@@ -25,7 +25,7 @@ const CheckoutForm = ({ amount, orderData, onSuccess, onClose }) => {
 
     try {
       // 1. Create payment intent
-      const paymentResponse = await fetch('http://localhost:5000/api/payment/create-payment-intent', {
+      const paymentResponse = await fetch(`${import.meta.env.VITE_API_URL}/api/payment/create-payment-intent`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -64,7 +64,7 @@ const CheckoutForm = ({ amount, orderData, onSuccess, onClose }) => {
 
       if (paymentIntent.status === 'succeeded') {
         // 3. Create order
-        const confirmResponse = await fetch('http://localhost:5000/api/payment/confirm-payment', {
+        const confirmResponse = await fetch(`${import.meta.env.VITE_API_URL}/api/payment/confirm-payment`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

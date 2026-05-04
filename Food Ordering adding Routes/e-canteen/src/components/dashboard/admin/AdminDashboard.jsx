@@ -132,19 +132,19 @@ export default function AdminDashboard({ onLogout }) {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="min-h-screen bg-surface-50 flex overflow-hidden">
       <Sidebar
         sidebarOpen={sidebarOpen}
+        setSidebarOpen={setSidebarOpen}
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         navItems={navItems}
         userProfile={restaurantInfo}
         onLogout={onLogout}
-        title={restaurantInfo.name}
-        subtitle="Admin Panel"
+        role="admin"
       />
 
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
         <Header
           sidebarOpen={sidebarOpen}
           setSidebarOpen={setSidebarOpen}
@@ -152,18 +152,20 @@ export default function AdminDashboard({ onLogout }) {
           navItems={navItems}
           userProfile={restaurantInfo}
           setActiveTab={setActiveTab}
-          title="Admin Dashboard"
+          role="admin"
         />
 
-        <div className="flex-1 p-6 overflow-auto">
+        <main className="flex-1 overflow-x-hidden overflow-y-auto bg-surface-50 p-4 sm:p-6 lg:p-8">
           <Notification notification={notification} />
           {error && (
             <div className="fixed top-5 left-5 z-[100] bg-red-500 text-white px-6 py-4 rounded-xl shadow-lg">
               <p>Error: {error}</p>
             </div>
           )}
-          {renderContent()}
-        </div>
+          <div className="max-w-7xl mx-auto space-y-6 animate-fade-in-up">
+            {renderContent()}
+          </div>
+        </main>
       </div>
     </div>
   );

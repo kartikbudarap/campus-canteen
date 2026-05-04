@@ -17,7 +17,7 @@ export default function RestaurantSettings({ restaurantInfo, setRestaurantInfo, 
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/restaurant', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/restaurant`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

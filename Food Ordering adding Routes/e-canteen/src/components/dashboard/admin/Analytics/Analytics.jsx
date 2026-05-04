@@ -134,33 +134,40 @@ export default function Analytics({ orders, foodItems, totalRevenue, refreshData
 
 function StatCard({ title, value, growth, icon: Icon, color, gradient, subtitle }) {
   const colorClasses = {
-    red: 'from-red-50 to-red-100 border-red-200 text-red-600',
-    blue: 'from-blue-50 to-blue-100 border-blue-200 text-blue-600',
-    green: 'from-green-50 to-green-100 border-green-200 text-green-600',
-    purple: 'from-purple-50 to-purple-100 border-purple-200 text-purple-600'
+    red: 'from-brand-50 to-brand-100 border-brand-200 text-brand-600 icon-text-brand',
+    blue: 'from-sky-50 to-sky-100 border-sky-200 text-sky-600 icon-text-sky',
+    green: 'from-emerald-50 to-emerald-100 border-emerald-200 text-emerald-600 icon-text-emerald',
+    purple: 'from-purple-50 to-purple-100 border-purple-200 text-purple-600 icon-text-purple'
+  };
+
+  const iconColors = {
+    red: 'text-brand-500',
+    blue: 'text-sky-500',
+    green: 'text-emerald-500',
+    purple: 'text-purple-500'
   };
 
   const bgClass = gradient 
     ? `bg-gradient-to-br ${colorClasses[color]}`
-    : 'bg-white border border-gray-200';
+    : 'bg-white border border-surface-200';
 
   return (
-    <div className={`${bgClass} rounded-2xl p-6 shadow-sm hover:shadow-md transition-all duration-300`}>
+    <div className={`${bgClass} rounded-2xl p-6 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-300`}>
       <div className="flex justify-between items-start">
         <div>
-          <p className={`text-sm font-medium ${gradient ? 'text-gray-700' : 'text-gray-600'}`}>{title}</p>
-          <h3 className="text-2xl font-bold text-gray-900 mt-2">{value}</h3>
-          {subtitle && <p className="text-gray-600 text-sm mt-2">{subtitle}</p>}
+          <p className={`text-sm font-semibold ${gradient ? 'text-surface-700' : 'text-surface-500'}`}>{title}</p>
+          <h3 className="text-3xl font-extrabold text-surface-900 mt-2 tracking-tight">{value}</h3>
+          {subtitle && <p className="text-surface-500 text-sm mt-1">{subtitle}</p>}
         </div>
-        <div className={`p-2 ${gradient ? 'bg-white' : 'bg-gray-50'} rounded-lg shadow-sm`}>
-          <Icon className={`w-5 h-5 ${colorClasses[color].split(' ')[0]}`} />
+        <div className={`p-2.5 ${gradient ? 'bg-white/80 backdrop-blur-sm' : 'bg-surface-50'} rounded-xl shadow-sm border border-white/50`}>
+          <Icon className={`w-5 h-5 ${iconColors[color]}`} />
         </div>
       </div>
       {growth && (
-        <div className="flex items-center gap-1 mt-3">
-          <ArrowUp className="w-4 h-4 text-green-500" />
-          <span className="text-green-500 text-sm font-medium">+{growth}%</span>
-          <span className="text-gray-500 text-sm ml-1">vs last period</span>
+        <div className="flex items-center gap-1.5 mt-4 bg-white/50 w-fit px-2 py-1 rounded-lg">
+          <ArrowUp className="w-3.5 h-3.5 text-emerald-500" />
+          <span className="text-emerald-600 text-xs font-bold">+{growth}%</span>
+          <span className="text-surface-500 text-xs font-medium ml-1">vs last period</span>
         </div>
       )}
     </div>

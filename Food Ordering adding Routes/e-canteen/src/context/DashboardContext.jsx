@@ -2,7 +2,7 @@ import React, { createContext, useState, useEffect, useContext, useMemo, useCall
 
 // Create API instance outside the component to avoid recreation
 const createAPI = () => {
-  const baseURL = 'http://localhost:5000/api';
+  const baseURL = `${import.meta.env.VITE_API_URL}/api`;
   
   const getToken = () => {
     return localStorage.getItem('token');

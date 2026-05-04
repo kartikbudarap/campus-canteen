@@ -54,9 +54,7 @@ const usePopularDishes = () => {
         setLoading(true);
         setError(null);
         
-        const apiUrl = process.env.NODE_ENV === 'production' 
-          ? '/api/food-items?limit=4'
-          : 'http://localhost:5000/api/food-items?limit=4';
+        const apiUrl = `${import.meta.env.VITE_API_URL}/api/food-items?limit=4`;
         
         const response = await fetch(apiUrl, {
           method: 'GET',
