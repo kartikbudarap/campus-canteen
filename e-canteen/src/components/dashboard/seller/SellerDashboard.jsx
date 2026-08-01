@@ -10,11 +10,11 @@ import SellerProfile from "./Profile/SellerProfile";
 import { ShoppingBag, Users, ShoppingCart } from "lucide-react";
 
 export default function SellerDashboard({ onLogout }) {
-  const { orders, loadOrders, updateOrderStatus: updateOrderStatusAPI } = useContext(DashboardContext);
+  const { orders, loadOrders, updateOrderStatus: updateOrderStatusAPI, verifyPickup: verifyPickupAPI, realtimeConnected } = useContext(DashboardContext);
   
   const [activeTab, setActiveTab] = useState("orders");
   const [notification, setNotification] = useState(null);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
 
   const getSellerInfo = () => {
@@ -65,6 +65,16 @@ export default function SellerDashboard({ onLogout }) {
     }
   };
 
+  const verifyPickup = async (orderId, credential) => {
+    try {
+      const order = await verifyPickupAPI(orderId, credential);
+      showToast('Pickup verified. Order completed.', 'success');
+      return order;
+    } catch (error) {
+      showToast(error.message || 'Pickup verification failed', 'error');
+      throw error;
+    }
+  };
   const refreshData = async () => {
     try {
       await loadOrders();
@@ -80,7 +90,9 @@ export default function SellerDashboard({ onLogout }) {
         return <OrderManagement 
           orders={orders}
           updateOrderStatus={updateOrderStatus}
+          verifyPickup={verifyPickup}
           refreshData={refreshData}
+          realtimeConnected={realtimeConnected}
           showToast={showToast}
           setUnreadNotifications={setUnreadNotifications}
         />;
@@ -119,6 +131,10 @@ export default function SellerDashboard({ onLogout }) {
           userProfile={sellerInfo}
           setActiveTab={setActiveTab}
           role="seller"
+          notifications={[
+            orders.filter((order) => order.status === 'pending').length > 0 && { id: 'new-orders', title: 'New kitchen orders', message: `${orders.filter((order) => order.status === 'pending').length} orders are waiting to be accepted.`, tab: 'orders' },
+            orders.filter((order) => order.status === 'ready').length > 0 && { id: 'pickup-ready', title: 'Pickup queue', message: `${orders.filter((order) => order.status === 'ready').length} ready orders are waiting for verification.`, tab: 'orders' }
+          ].filter(Boolean)}
         />
 
         <main className="dashboard-surface flex-1 overflow-x-hidden overflow-y-auto p-4 sm:p-6 lg:p-8">
@@ -131,3 +147,5 @@ export default function SellerDashboard({ onLogout }) {
     </div>
   );
 }
+
+

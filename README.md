@@ -57,6 +57,9 @@ PORT=5000
 NODE_ENV=development
 MONGODB_URI=mongodb://localhost:27017/food_ordering
 JWT_SECRET=your_secret_here
+PICKUP_SECRET=a_separate_long_random_secret
+PICKUP_TTL_SECONDS=1800
+REDIS_URL=redis://127.0.0.1:6379
 CLIENT_URL=http://localhost:5173
 STRIPE_SECRET_KEY=your_stripe_secret_key
 EMAIL_USER=your_email@gmail.com
@@ -92,6 +95,14 @@ cd e-canteen
 npm run dev
 ```
 
+
+## Secure Pickup Verification
+
+When a seller marks a paid order as ready, the API creates an encrypted, expiring pickup pass. The customer can display its QR code or six-digit fallback PIN. Sellers must verify one of those credentials before the order can move from `ready` to `completed`.
+
+Redis is optional in local development. When `REDIS_URL` is configured, it stores short-lived pickup-token mappings and verification-attempt rate limits. MongoDB remains the permanent audit source, so pickup verification still works if Redis is unavailable.
+
+Counter QR scanners can enter the QR token directly into the seller verification field. Verification is limited to five failed attempts before a five-minute lockout.
 ## Available Scripts
 
 Backend:
@@ -169,3 +180,4 @@ For support, email kartikbudarap@gmail.com or open an issue in the repository.
 **Built with ❤️ for campus communities**
 
 </div>
+

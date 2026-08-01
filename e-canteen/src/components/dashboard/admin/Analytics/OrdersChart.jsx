@@ -1,67 +1,31 @@
-import React from 'react';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+﻿import React, { useMemo } from 'react';
+import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
+import { Activity } from 'lucide-react';
 
-export default function OrdersChart({ orders, timeRange }) {
-  const generateTimeSeriesData = () => {
-    const days = timeRange === '7d' ? 7 : timeRange === '30d' ? 30 : 90;
-    const data = [];
-    const now = new Date();
-    
-    for (let i = days - 1; i >= 0; i--) {
-      const date = new Date(now);
-      date.setDate(date.getDate() - i);
-      const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-      
-      const dayOrders = orders.filter(order => {
-        if (!order.createdAt) return false;
-        const orderDate = new Date(order.createdAt);
-        return orderDate.toDateString() === date.toDateString();
-      });
+const statusMeta = [
+  ['pending', 'Pending', '#f59e0b'],
+  ['accepted', 'Accepted', '#3b82f6'],
+  ['preparing', 'Preparing', '#8b5cf6'],
+  ['ready', 'Ready', '#10b981'],
+  ['completed', 'Completed', '#17211b'],
+  ['cancelled', 'Cancelled', '#ef4444']
+];
 
-      data.push({
-        date: dateStr,
-        orders: dayOrders.length,
-        fullDate: date
-      });
-    }
-    return data;
-  };
-
-  const data = generateTimeSeriesData();
-
-  if (!data.length) {
-    return (
-      <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm text-center text-gray-500">
-        No order data available
-      </div>
-    );
-  }
+export default function OrdersChart({ orders }) {
+  const data = useMemo(() => statusMeta.map(([key, name, color]) => ({
+    key, name, color, value: orders.filter((order) => order.status === key).length
+  })).filter((item) => item.value > 0), [orders]);
 
   return (
-    <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
-      <h3 className="font-bold text-gray-900 text-lg mb-4">Orders Overview</h3>
-      <ResponsiveContainer width="100%" height={300}>
-        <AreaChart data={data}>
-          <defs>
-            <linearGradient id="colorOrders" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.7} />
-              <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.1} />
-            </linearGradient>
-          </defs>
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis dataKey="date" />
-          <YAxis />
-          <Tooltip formatter={(value) => `${value} orders`} />
-          <Legend />
-          <Area
-            type="monotone"
-            dataKey="orders"
-            stroke="#3b82f6"
-            fill="url(#colorOrders)"
-            strokeWidth={2}
-          />
-        </AreaChart>
-      </ResponsiveContainer>
-    </div>
+    <section className="rounded-3xl border border-[#e5e0d7] bg-white p-5 shadow-[0_18px_50px_rgba(31,38,33,.05)] sm:p-6">
+      <div className="flex items-start justify-between"><div><p className="text-sm font-black">Order mix</p><p className="mt-1 text-xs font-medium text-slate-400">Live distribution by fulfilment stage</p></div><span className="grid h-10 w-10 place-items-center rounded-xl bg-violet-50 text-violet-700"><Activity className="h-5 w-5" /></span></div>
+      <div className="mt-4 grid items-center gap-2 sm:grid-cols-[1fr_1fr]">
+        <div className="h-56">
+          <ResponsiveContainer width="100%" height="100%"><PieChart><Pie data={data.length ? data : [{ name: 'No orders', value: 1, color: '#e2e8f0' }]} dataKey="value" innerRadius={58} outerRadius={86} paddingAngle={3} stroke="none">{(data.length ? data : [{ color: '#e2e8f0' }]).map((item) => <Cell key={item.name || item.color} fill={item.color} />)}</Pie><Tooltip contentStyle={{ borderRadius: 14, border: '1px solid #e5e0d7' }} /></PieChart></ResponsiveContainer>
+        </div>
+        <div className="space-y-2">{statusMeta.map(([key, name, color]) => { const value = orders.filter((order) => order.status === key).length; return <div key={key} className="flex items-center gap-2 text-xs"><span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: color }} /><span className="flex-1 font-semibold text-slate-500">{name}</span><span className="font-black text-slate-800">{value}</span></div>; })}</div>
+      </div>
+    </section>
   );
 }
+

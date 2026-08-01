@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+﻿import React, { useState, useEffect } from "react";
 import { useDashboard } from "../../../context/DashboardContext";
 import Sidebar from "../common/Sidebar/Sidebar";
 import Header from "../common/Header/Header";
@@ -38,7 +38,7 @@ export default function AdminDashboard({ onLogout }) {
 
   const [activeTab, setActiveTab] = useState("dashboard");
   const [notification, setNotification] = useState(null);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const [restaurantInfo, setRestaurantInfo] = useState({
     name: "Tasty Bites Restaurant",
@@ -153,6 +153,11 @@ export default function AdminDashboard({ onLogout }) {
           userProfile={restaurantInfo}
           setActiveTab={setActiveTab}
           role="admin"
+          notifications={[
+            orders.filter((order) => order.status === 'pending').length > 0 && { id: 'pending-orders', title: 'New orders waiting', message: `${orders.filter((order) => order.status === 'pending').length} orders need kitchen attention.`, tab: 'dashboard' },
+            orders.filter((order) => order.status === 'ready').length > 0 && { id: 'ready-orders', title: 'Orders ready for pickup', message: `${orders.filter((order) => order.status === 'ready').length} customers can now collect their food.`, tab: 'dashboard' },
+            foodItems.filter((item) => !item.isAvailable).length > 0 && { id: 'hidden-items', title: 'Menu availability', message: `${foodItems.filter((item) => !item.isAvailable).length} menu items are currently hidden.`, tab: 'menu' }
+          ].filter(Boolean)}
         />
 
         <main className="dashboard-surface flex-1 overflow-x-hidden overflow-y-auto p-4 sm:p-6 lg:p-8">
@@ -165,3 +170,4 @@ export default function AdminDashboard({ onLogout }) {
     </div>
   );
 }
+

@@ -1,86 +1,27 @@
-import React from 'react';
+﻿import React, { useMemo } from 'react';
+import { Award, Utensils } from 'lucide-react';
 
-export default function TopItemsChart({ orders, foodItems }) {
-  const getTopItems = () => {
-    const itemSales = {};
-    const completedOrders = orders.filter(order => order.status === 'completed');
-    
-    completedOrders.forEach(order => {
-      if (order.items && Array.isArray(order.items)) {
-        order.items.forEach(item => {
-          const itemId = item.foodItem?._id || item._id || item.name;
-          const itemName = item.name || item.foodItem?.name || 'Unknown Item';
-          const itemCategory = item.category || item.foodItem?.category || 'Uncategorized';
-          
-          if (!itemSales[itemId]) {
-            itemSales[itemId] = {
-              _id: itemId,
-              name: itemName,
-              category: itemCategory,
-              image: item.image || item.foodItem?.image,
-              quantity: 0,
-              orders: 0
-            };
-          }
-          itemSales[itemId].quantity += (item.quantity || 1);
-          itemSales[itemId].orders += 1;
-        });
-      }
+export default function TopItemsChart({ orders }) {
+  const items = useMemo(() => {
+    const sales = {};
+    orders.filter((order) => order.status === 'completed').forEach((order) => {
+      order.items?.forEach((item) => {
+        const key = item.foodItem?._id || item.name || item._id;
+        if (!sales[key]) sales[key] = { name: item.name || item.foodItem?.name || 'Menu item', category: item.foodItem?.category || 'Menu', image: item.foodItem?.image, quantity: 0, revenue: 0 };
+        sales[key].quantity += Number(item.quantity || 1);
+        sales[key].revenue += Number(item.price || item.foodItem?.price || 0) * Number(item.quantity || 1);
+      });
     });
-
-    return Object.values(itemSales)
-      .sort((a, b) => b.quantity - a.quantity)
-      .slice(0, 5);
-  };
-
-  const topItems = getTopItems();
-
-  if (topItems.length === 0) {
-    return (
-      <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
-        <h3 className="font-bold text-gray-900 text-lg mb-6">Top Performing Items</h3>
-        <div className="text-center py-8 text-gray-500">
-          No item sales data available
-        </div>
-      </div>
-    );
-  }
+    return Object.values(sales).sort((a, b) => b.quantity - a.quantity).slice(0, 5);
+  }, [orders]);
+  const max = Math.max(...items.map((item) => item.quantity), 1);
 
   return (
-    <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
-      <h3 className="font-bold text-gray-900 text-lg mb-6">Top Performing Items</h3>
-      
-      <div className="space-y-3">
-        {topItems.map((item, index) => (
-          <div
-            key={item._id || index}
-            className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
-          >
-            <div className="flex items-center gap-3">
-              <div className="flex items-center justify-center w-8 h-8 bg-green-100 text-green-800 rounded-lg font-bold text-sm">
-                #{index + 1}
-              </div>
-              <div className="flex items-center gap-2">
-                {item.image && (
-                  <img
-                    src={item.image}
-                    alt={item.name}
-                    className="w-10 h-10 rounded-lg object-cover"
-                  />
-                )}
-                <div>
-                  <div className="font-medium text-gray-900">{item.name}</div>
-                  <div className="text-sm text-gray-500">{item.category}</div>
-                </div>
-              </div>
-            </div>
-            <div className="text-right">
-              <div className="font-bold text-gray-900">{item.quantity} sold</div>
-              <div className="text-xs text-gray-500">{item.orders} orders</div>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
+    <section className="rounded-3xl border border-[#e5e0d7] bg-white p-5 shadow-[0_18px_50px_rgba(31,38,33,.05)] sm:p-6">
+      <div className="flex items-start justify-between"><div><p className="text-sm font-black">Top-selling menu</p><p className="mt-1 text-xs font-medium text-slate-400">Items customers choose most often</p></div><Award className="h-5 w-5 text-amber-500" /></div>
+      <div className="mt-6 space-y-4">{items.length ? items.map((item, index) => <div key={item.name} className="grid grid-cols-[auto_1fr_auto] items-center gap-3"><span className="grid h-10 w-10 place-items-center overflow-hidden rounded-xl bg-orange-50 text-sm font-black text-orange-700">{item.image ? <img src={item.image} alt="" className="h-full w-full object-cover" /> : index + 1}</span><div className="min-w-0"><div className="flex justify-between gap-3"><p className="truncate text-sm font-bold">{item.name}</p><p className="text-xs font-black">{item.quantity} sold</p></div><div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-orange-500" style={{ width: `${(item.quantity / max) * 100}%` }} /></div></div><p className="text-right text-xs font-bold text-slate-400">{'\u20B9'}{item.revenue.toLocaleString('en-IN')}</p></div>) : <div className="grid place-items-center rounded-2xl border border-dashed border-slate-200 py-12 text-center"><Utensils className="h-7 w-7 text-slate-300" /><p className="mt-3 text-sm font-bold text-slate-400">Sales insights appear after completed orders</p></div>}</div>
+    </section>
   );
 }
+
+

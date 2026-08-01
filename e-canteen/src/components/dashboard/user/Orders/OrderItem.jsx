@@ -1,7 +1,8 @@
 import React from 'react';
 import { Clock } from 'lucide-react';
+import PickupPass from './PickupPass';
 
-export default function OrderItem({ order }) {
+export default function OrderItem({ order, getPickupPass }) {
   const getStatusColor = (status) => {
     switch (status) {
       case "completed": return "bg-green-100 text-green-800 border-green-200";
@@ -73,6 +74,14 @@ export default function OrderItem({ order }) {
         </div>
       </div>
 
+
+      {order.status === 'ready' && getPickupPass && (
+        <PickupPass
+          orderId={order._id || order.id}
+          orderNumber={order.orderNumber || order._id?.slice(-8).toUpperCase()}
+          getPickupPass={getPickupPass}
+        />
+      )}
       <div className="flex justify-between items-center pt-4 border-t border-gray-100">
         <span className="text-lg font-bold text-orange-500">
           Total: ₹{order.total}

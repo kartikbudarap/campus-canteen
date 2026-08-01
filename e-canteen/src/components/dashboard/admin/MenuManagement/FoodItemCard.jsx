@@ -1,67 +1,13 @@
-import React from 'react';
-import { Edit2, Trash2, Utensils } from 'lucide-react';
+﻿import React from 'react';
+import { Edit3, ImageOff, MoreVertical, Trash2 } from 'lucide-react';
 
 export default function FoodItemCard({ item, onEdit, onDelete }) {
   return (
-    <div className="group bg-white border border-gray-200 p-5 rounded-xl shadow-sm hover:shadow-xl hover:border-orange-300 transition-all duration-500 transform hover:-translate-y-2">
-      {item.image ? (
-        <div className="relative overflow-hidden rounded-xl mb-4">
-          <img
-            src={item.image}
-            alt={item.name}
-            className="w-full h-40 object-cover rounded-xl group-hover:scale-110 transition-transform duration-500"
-          />
-          <div className="absolute top-3 right-3">
-            <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-              item.isAvailable 
-                ? 'bg-green-100 text-green-800 border border-green-200' 
-                : 'bg-orange-100 text-orange-800 border border-orange-200'
-            }`}>
-              {item.isAvailable ? 'Available' : 'Unavailable'}
-            </span>
-          </div>
-        </div>
-      ) : (
-        <div className="relative overflow-hidden rounded-xl mb-4 bg-gray-100 h-40 flex items-center justify-center group-hover:bg-gray-200 transition-colors duration-300">
-          <Utensils className="w-12 h-12 text-gray-400 group-hover:text-gray-500 transition-colors duration-300" />
-          <div className="absolute top-3 right-3">
-            <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-              item.isAvailable 
-                ? 'bg-green-100 text-green-800 border border-green-200' 
-                : 'bg-orange-100 text-orange-800 border border-orange-200'
-            }`}>
-              {item.isAvailable ? 'Available' : 'Unavailable'}
-            </span>
-          </div>
-        </div>
-      )}
-      
-      <h3 className="font-bold text-lg text-gray-900 mb-2 group-hover:text-orange-600 transition-colors duration-300">{item.name}</h3>
-      <p className="text-gray-600 text-sm mb-3 line-clamp-2">{item.description}</p>
-      
-      <div className="flex justify-between items-center mb-4">
-        <span className="font-bold text-lg text-orange-500 group-hover:text-orange-600 transition-colors duration-300">
-          ₹{item.price}
-        </span>
-        <span className="px-3 py-1 bg-gray-100 rounded-full text-xs text-gray-700 border border-gray-200 group-hover:bg-orange-50 group-hover:border-orange-200 transition-colors duration-300">
-          {item.category}
-        </span>
-      </div>
-
-      <div className="flex gap-2">
-        <button
-          onClick={onEdit}
-          className="flex-1 bg-white border border-gray-300 hover:border-orange-300 hover:bg-orange-50 text-gray-700 py-3 rounded-xl text-sm flex items-center justify-center gap-2 transition-all duration-300 hover:scale-105"
-        >
-          <Edit2 className="w-4 h-4" /> Edit
-        </button>
-        <button
-          onClick={onDelete}
-          className="flex-1 bg-orange-500 hover:bg-orange-600 text-white py-3 rounded-xl text-sm flex items-center justify-center gap-2 transition-all duration-300 hover:scale-105"
-        >
-          <Trash2 className="w-4 h-4" /> Delete
-        </button>
-      </div>
-    </div>
+    <article className="group overflow-hidden rounded-3xl border border-[#e5e0d7] bg-white shadow-[0_14px_40px_rgba(31,38,33,.05)] transition hover:-translate-y-1 hover:shadow-[0_22px_55px_rgba(31,38,33,.1)]">
+      <div className="relative aspect-[16/10] overflow-hidden bg-[#f1eee8]">{item.image ? <img src={item.image} alt={item.name} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" /> : <div className="grid h-full place-items-center"><ImageOff className="h-8 w-8 text-slate-300" /></div>}<div className="absolute inset-x-0 top-0 flex items-start justify-between p-4"><span className={`rounded-full px-3 py-1.5 text-[10px] font-black uppercase tracking-wider shadow-sm backdrop-blur ${item.isAvailable ? 'bg-emerald-500/90 text-white' : 'bg-slate-900/80 text-white'}`}>{item.isAvailable ? 'Live' : 'Hidden'}</span><span className="grid h-8 w-8 place-items-center rounded-xl bg-white/90 text-slate-600 shadow-sm backdrop-blur"><MoreVertical className="h-4 w-4" /></span></div></div>
+      <div className="p-5"><div className="flex items-start justify-between gap-4"><div className="min-w-0"><p className="text-xs font-black uppercase tracking-[.14em] text-orange-600">{item.category}</p><h3 className="mt-2 truncate text-lg font-black text-[#17211b]">{item.name}</h3></div><p className="shrink-0 text-xl font-black text-[#17211b]">{'\u20B9'}{Number(item.price || 0).toLocaleString('en-IN')}</p></div><p className="mt-3 line-clamp-2 min-h-10 text-sm leading-5 text-slate-500">{item.description || 'No description added yet.'}</p><div className="mt-5 grid grid-cols-[1fr_auto] gap-2"><button onClick={onEdit} className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#f4f1eb] px-4 py-2.5 text-sm font-black text-slate-700 hover:bg-orange-50 hover:text-orange-700"><Edit3 className="h-4 w-4" /> Edit item</button><button onClick={onDelete} className="grid h-10 w-10 place-items-center rounded-xl text-slate-400 hover:bg-rose-50 hover:text-rose-600" aria-label={`Delete ${item.name}`}><Trash2 className="h-4 w-4" /></button></div></div>
+    </article>
   );
 }
+
+

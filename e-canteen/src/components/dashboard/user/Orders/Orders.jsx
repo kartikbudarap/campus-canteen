@@ -2,7 +2,7 @@ import React from 'react';
 import { Package, RefreshCw } from 'lucide-react';
 import OrderItem from './OrderItem';
 
-export default function Orders({ orders, loading, error, refreshData, setActiveTab }) {
+export default function Orders({ orders, loading, error, refreshData, setActiveTab, getPickupPass }) {
   if (loading) {
     return (
       <div className="h-[60vh] flex flex-col items-center justify-center">
@@ -71,7 +71,7 @@ export default function Orders({ orders, loading, error, refreshData, setActiveT
 
       <div className="space-y-4">
         {orders.map((order) => (
-          <OrderItem key={order._id || order.id} order={order} />
+          <OrderItem key={order._id || order.id} order={order} getPickupPass={getPickupPass} />
         ))}
       </div>
     </div>

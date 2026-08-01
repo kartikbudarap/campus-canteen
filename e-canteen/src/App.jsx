@@ -228,7 +228,7 @@ function AppContent() {
   }
 
   return (
-    <DashboardProvider>
+    <DashboardProvider authToken={localStorage.getItem('token')}>
       <Toast notification={notification} onClose={() => setNotification(null)} />
 
       {/* Loading Overlay */}

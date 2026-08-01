@@ -1,4 +1,5 @@
 import React, { createContext, useState, useEffect, useContext, useMemo, useCallback } from "react";
+import { io } from "socket.io-client";
 
 // Create API instance outside the component to avoid recreation
 const createAPI = () => {
@@ -67,14 +68,40 @@ const api = createAPI();
 
 export const DashboardContext = createContext();
 
-export const DashboardProvider = ({ children }) => {
+export const DashboardProvider = ({ children, authToken }) => {
   const [foodItems, setFoodItems] = useState([]);
   const [orders, setOrders] = useState([]);
   const [totalRevenue, setTotalRevenue] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [dataLoaded, setDataLoaded] = useState(false);
+  const [loadedToken, setLoadedToken] = useState(null);
+  const [realtimeConnected, setRealtimeConnected] = useState(false);
 
+  const applyRealtimeOrder = useCallback((incomingOrder) => {
+    if (!incomingOrder) return;
+    const incomingId = incomingOrder._id || incomingOrder.id;
+    if (!incomingId) return;
+
+    setOrders((previous) => {
+      const exists = previous.some((order) => (order._id || order.id) === incomingId);
+      const next = exists
+        ? previous.map((order) => (order._id || order.id) === incomingId ? incomingOrder : order)
+        : [incomingOrder, ...previous];
+      const revenue = next
+        .filter((order) => order.status === 'completed')
+        .reduce((sum, order) => sum + Number(order.total || 0), 0);
+      setTotalRevenue(revenue);
+      return next;
+    });
+  }, []);
+
+  const replaceRealtimeOrders = useCallback((incomingOrders) => {
+    if (!Array.isArray(incomingOrders)) return;
+    setOrders(incomingOrders);
+    setTotalRevenue(incomingOrders
+      .filter((order) => order.status === 'completed')
+      .reduce((sum, order) => sum + Number(order.total || 0), 0));
+  }, []);
   const isAuthenticated = useCallback(() => {
     const token = localStorage.getItem('token');
     return !!token;
@@ -191,15 +218,26 @@ export const DashboardProvider = ({ children }) => {
 
       const response = await api.patch(`/orders/${orderId}/status`, { status });
       const updatedOrder = response.data || response;
-      setOrders(prev => prev.map(order => 
-        (order._id === orderId || order.id === orderId) ? updatedOrder : order
-      ));
+      applyRealtimeOrder(updatedOrder);
       return updatedOrder;
     } catch (error) {
       throw new Error(error.message || 'Failed to update order status');
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, applyRealtimeOrder]);
 
+  const getPickupPass = useCallback(async (orderId) => {
+    const response = await api.get(`/orders/${orderId}/pickup-pass`);
+    return response.data || response;
+  }, []);
+
+  const verifyPickup = useCallback(async (orderId, credential) => {
+    const isPin = /^\d{6}$/.test(credential.trim());
+    const response = await api.post(`/orders/${orderId}/verify-pickup`, isPin ? { pin: credential.trim() } : { token: credential.trim() });
+    const updatedOrder = response.data || response;
+    applyRealtimeOrder(updatedOrder);
+
+    return updatedOrder;
+  }, [applyRealtimeOrder]);
   const createOrder = useCallback(async (orderData) => {
     try {
       if (!isAuthenticated()) {
@@ -235,28 +273,70 @@ export const DashboardProvider = ({ children }) => {
       const response = await api.post('/orders', orderPayload);
       const newOrder = response.data || response;
       
-      setOrders(prev => [...prev, newOrder]);
+      applyRealtimeOrder(newOrder);
       return newOrder;
     } catch (error) {
       throw new Error(error.message || 'Failed to create order');
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, applyRealtimeOrder]);
 
-  // Load data only once when component mounts and is authenticated
   useEffect(() => {
+    if (!authToken) {
+      setRealtimeConnected(false);
+      return undefined;
+    }
+
+    const socket = io(import.meta.env.VITE_API_URL, {
+      auth: { token: authToken },
+      transports: ['websocket', 'polling'],
+      reconnection: true,
+      reconnectionAttempts: 8
+    });
+
+    socket.on('connect', () => setRealtimeConnected(true));
+    socket.on('disconnect', () => setRealtimeConnected(false));
+    socket.on('connect_error', () => setRealtimeConnected(false));
+    socket.on('orders:snapshot', replaceRealtimeOrders);
+    socket.on('order:created', applyRealtimeOrder);
+    socket.on('order:updated', applyRealtimeOrder);
+
+    return () => {
+      socket.off('orders:snapshot', replaceRealtimeOrders);
+      socket.off('order:created', applyRealtimeOrder);
+      socket.off('order:updated', applyRealtimeOrder);
+      socket.disconnect();
+    };
+  }, [applyRealtimeOrder, authToken, replaceRealtimeOrders]);
+
+  // Recover automatically during a temporary socket outage; never require a page refresh.
+  useEffect(() => {
+    if (!authToken || realtimeConnected) return undefined;
+    const interval = window.setInterval(() => {
+      loadOrders().catch(() => {});
+    }, 5000);
+    return () => window.clearInterval(interval);
+  }, [authToken, realtimeConnected, loadOrders]);
+  // Load immediately after login and reload when a different account signs in.
+  useEffect(() => {
+    if (!authToken) {
+      setOrders([]);
+      setTotalRevenue(0);
+      setLoadedToken(null);
+      return;
+    }
+    if (loadedToken === authToken) return;
+
     const loadInitialData = async () => {
-      if (isAuthenticated() && !dataLoaded) {
-        try {
-          await Promise.all([loadFoodItems(), loadOrders()]);
-          setDataLoaded(true);
-        } catch (error) {
-          // Silently catch errors as they are already handled in the individual load functions
-        }
+      try {
+        await Promise.all([loadFoodItems(), loadOrders()]);
+        setLoadedToken(authToken);
+      } catch {
+        // Individual loaders expose their own errors through context.
       }
     };
 
     loadInitialData();
-  }, [isAuthenticated, dataLoaded, loadFoodItems, loadOrders]);
+  }, [authToken, loadedToken, loadFoodItems, loadOrders]);
 
   // Memoized context value to prevent unnecessary re-renders
   const contextValue = useMemo(() => ({
@@ -271,8 +351,11 @@ export const DashboardProvider = ({ children }) => {
     updateFoodItem,
     deleteFoodItem,
     updateOrderStatus,
+    getPickupPass,
+    verifyPickup,
     createOrder,
-    isAuthenticated
+    isAuthenticated,
+    realtimeConnected
   }), [
     foodItems,
     orders,
@@ -285,8 +368,11 @@ export const DashboardProvider = ({ children }) => {
     updateFoodItem,
     deleteFoodItem,
     updateOrderStatus,
+    getPickupPass,
+    verifyPickup,
     createOrder,
-    isAuthenticated
+    isAuthenticated,
+    realtimeConnected
   ]);
 
   return (

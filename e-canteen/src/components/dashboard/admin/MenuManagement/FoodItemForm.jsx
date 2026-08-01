@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { X, ImagePlus, Utensils } from 'lucide-react';
 
 export default function FoodItemForm({ isOpen, onClose, onSubmit, editingItem, showToast, isAuthenticated }) {
@@ -56,29 +56,29 @@ export default function FoodItemForm({ isOpen, onClose, onSubmit, editingItem, s
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white border border-gray-200 rounded-2xl w-full max-w-md shadow-xl">
-        <div className="flex justify-between items-center p-6 border-b border-gray-200">
-          <h2 className="text-xl font-bold text-gray-900">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm">
+      <div className="max-h-[calc(100vh-2rem)] w-full max-w-lg overflow-y-auto rounded-[2rem] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden border border-[#e5e0d7] bg-white shadow-2xl">
+        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-[#ebe6de] bg-white/95 p-6 backdrop-blur">
+          <h2 className="text-xl font-black tracking-[-.03em] text-[#17211b]">
             {editingItem ? "Edit Menu Item" : "Add New Item"}
           </h2>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-xl transition-colors text-gray-500"
+            className="rounded-xl p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-5 p-6">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="mb-2 block text-xs font-black text-slate-500">
               Item Name
             </label>
             <input
               type="text"
               placeholder="Enter item name"
-              className="w-full p-3 rounded-xl border border-gray-300 focus:border-orange-500 focus:ring-2 focus:ring-orange-100 transition-all duration-200"
+              className="w-full rounded-xl border border-[#ddd8cf] bg-[#fcfbf8] p-3 text-sm outline-none transition focus:border-orange-500 focus:ring-4 focus:ring-orange-100"
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               required
@@ -86,12 +86,12 @@ export default function FoodItemForm({ isOpen, onClose, onSubmit, editingItem, s
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="mb-2 block text-xs font-black text-slate-500">
               Description
             </label>
             <textarea
               placeholder="Enter description"
-              className="w-full p-3 rounded-xl border border-gray-300 focus:border-orange-500 focus:ring-2 focus:ring-orange-100 transition-all duration-200 resize-none"
+              className="w-full rounded-xl border border-[#ddd8cf] bg-[#fcfbf8] p-3 text-sm outline-none transition focus:border-orange-500 focus:ring-4 focus:ring-orange-100 resize-none"
               rows="3"
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
@@ -100,13 +100,13 @@ export default function FoodItemForm({ isOpen, onClose, onSubmit, editingItem, s
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Price (₹)
+              <label className="mb-2 block text-xs font-black text-slate-500">
+                Price (INR)
               </label>
               <input
                 type="number"
                 placeholder="0.00"
-                className="w-full p-3 rounded-xl border border-gray-300 focus:border-orange-500 focus:ring-2 focus:ring-orange-100 transition-all duration-200"
+                className="w-full rounded-xl border border-[#ddd8cf] bg-[#fcfbf8] p-3 text-sm outline-none transition focus:border-orange-500 focus:ring-4 focus:ring-orange-100"
                 value={formData.price}
                 onChange={(e) => setFormData({ ...formData, price: e.target.value })}
                 required
@@ -116,13 +116,13 @@ export default function FoodItemForm({ isOpen, onClose, onSubmit, editingItem, s
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="mb-2 block text-xs font-black text-slate-500">
                 Category
               </label>
               <input
                 type="text"
                 placeholder="Category"
-                className="w-full p-3 rounded-xl border border-gray-300 focus:border-orange-500 focus:ring-2 focus:ring-orange-100 transition-all duration-200"
+                className="w-full rounded-xl border border-[#ddd8cf] bg-[#fcfbf8] p-3 text-sm outline-none transition focus:border-orange-500 focus:ring-4 focus:ring-orange-100"
                 value={formData.category}
                 onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                 required
@@ -131,7 +131,7 @@ export default function FoodItemForm({ isOpen, onClose, onSubmit, editingItem, s
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="mb-2 block text-xs font-black text-slate-500">
               Item Image
             </label>
             <div className="flex items-center gap-3">
@@ -191,3 +191,6 @@ export default function FoodItemForm({ isOpen, onClose, onSubmit, editingItem, s
     </div>
   );
 }
+
+
+

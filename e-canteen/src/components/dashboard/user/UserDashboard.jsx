@@ -7,7 +7,7 @@ import Menu from "./Menu/Menu";
 import Cart from "./Cart/Cart";
 import Orders from "./Orders/Orders";
 import Profile from "./Profile/Profile";
-import StripePayment from "../../StripePayment";
+import RazorpayDemoPayment from "../../RazorpayDemoPayment";
 
 // Add all required Lucide React icons
 import { 
@@ -39,7 +39,8 @@ export default function UserDashboard({ onLogout }) {
     orders, 
     createOrder, 
     loadFoodItems, 
-    loadOrders, 
+    loadOrders,
+    getPickupPass,
     loading,
     error 
   } = useContext(DashboardContext);
@@ -50,7 +51,7 @@ export default function UserDashboard({ onLogout }) {
     return savedCart ? JSON.parse(savedCart) : [];
   });
   const [notification, setNotification] = useState(null);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [isEditingProfile, setIsEditingProfile] = useState(false);
@@ -156,10 +157,10 @@ export default function UserDashboard({ onLogout }) {
       return;
     }
 
-    // Check minimum amount (₹50 for Stripe)
+    // Check the server-enforced minimum demo order amount
     const total = cart.reduce((sum, i) => sum + (i.price * i.qty), 0);
     if (total < 50) {
-      showToast("Minimum order amount is ₹50", "error");
+      showToast("Minimum order amount is \u20B950", "error");
       return;
     }
 
@@ -301,6 +302,7 @@ export default function UserDashboard({ onLogout }) {
           error={error}
           refreshData={refreshData}
           setActiveTab={setActiveTab}
+          getPickupPass={getPickupPass}
         />;
       case "profile":
         return <Profile 
@@ -345,6 +347,10 @@ export default function UserDashboard({ onLogout }) {
           cart={cart}
           setActiveTab={setActiveTab}
           role="user"
+          notifications={[
+            orders.filter((order) => order.status === 'ready').length > 0 && { id: 'order-ready', title: 'Your order is ready', message: 'Open My Orders to show your QR pickup pass.', tab: 'orders' },
+            orders.filter((order) => order.status === 'preparing').length > 0 && { id: 'order-preparing', title: 'Food is being prepared', message: 'The kitchen has started preparing your order.', tab: 'orders' }
+          ].filter(Boolean)}
         />
 
         <main className="dashboard-surface flex-1 overflow-x-hidden overflow-y-auto p-4 sm:p-6 lg:p-8">
@@ -355,7 +361,7 @@ export default function UserDashboard({ onLogout }) {
         </main>
       </div>
 
-      <StripePayment
+      <RazorpayDemoPayment
         isOpen={showPayment}
         onClose={() => setShowPayment(false)}
         amount={currentOrderData?.total || 0}
@@ -365,3 +371,7 @@ export default function UserDashboard({ onLogout }) {
     </div>
   );
 }
+
+
+
+

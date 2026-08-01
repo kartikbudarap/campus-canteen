@@ -49,8 +49,21 @@ const orderSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+  pickup: {
+    codeHash: { type: String, select: false },
+    tokenHash: { type: String, select: false },
+    credentialCiphertext: { type: String, select: false },
+    expiresAt: Date,
+    failedAttempts: { type: Number, default: 0 },
+    lockedUntil: Date,
+    verifiedAt: Date,
+    verifiedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
+  },
   payment: {
     stripe_payment_intent_id: String,
+    razorpay_order_id: String,
+    razorpay_payment_id: String,
+    demo: { type: Boolean, default: false },
     status: {
       type: String,
       enum: ['pending', 'completed', 'failed', 'refunded'],
@@ -102,6 +115,8 @@ orderSchema.set('toJSON', { virtuals: true });
 // Indexes for better performance
 orderSchema.index({ user: 1, createdAt: -1 });
 orderSchema.index({ status: 1 });
+orderSchema.index({ 'pickup.tokenHash': 1 }, { sparse: true });
 orderSchema.index({ 'payment.stripe_payment_intent_id': 1 }, { unique: true, sparse: true });
+orderSchema.index({ 'payment.razorpay_payment_id': 1 }, { unique: true, sparse: true });
 
 module.exports = mongoose.model('Order', orderSchema);
