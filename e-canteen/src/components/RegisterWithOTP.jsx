@@ -1,5 +1,25 @@
-import React, { useState } from "react";
+﻿import React, { useState } from "react";
 import { Mail, Key, Eye, EyeOff, ArrowLeft, UserPlus, CheckCircle } from "lucide-react";
+
+const postRegistration = async (payload) => {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 20000);
+  try {
+    return await fetch(`${import.meta.env.VITE_API_URL}/api/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      signal: controller.signal,
+    });
+  } catch (error) {
+    if (error.name === 'AbortError') {
+      throw new Error('The server took too long to respond. Please try again.');
+    }
+    throw new Error('Cannot reach the server. Make sure the backend is running.');
+  } finally {
+    clearTimeout(timeout);
+  }
+};
 
 export default function RegisterWithOTP({ onRegister }) {
   const [step, setStep] = useState(1);
@@ -44,11 +64,7 @@ export default function RegisterWithOTP({ onRegister }) {
     setLoading(true);
     
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/register`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
-      });
+      const response = await postRegistration(form);
 
       const data = await response.json();
 
@@ -78,11 +94,7 @@ export default function RegisterWithOTP({ onRegister }) {
     setLoading(true);
     
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/register`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, otp }),
-      });
+      const response = await postRegistration({ ...form, otp });
 
       const data = await response.json();
 
@@ -111,7 +123,7 @@ export default function RegisterWithOTP({ onRegister }) {
           <div className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 ${
             notification.type === "success" ? "bg-emerald-100" : "bg-red-100"
           }`}>
-            <span className="text-xs font-bold">{notification.type === "success" ? "✓" : "!"}</span>
+            <span className="text-xs font-bold">{notification.type === "success" ? "âœ“" : "!"}</span>
           </div>
           {notification.message}
         </div>

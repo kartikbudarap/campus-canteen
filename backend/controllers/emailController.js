@@ -15,7 +15,10 @@ const emailController = {
   transporter: nodemailer.createTransport({
     host: 'smtp.gmail.com',
     port: 465,
-    secure:true,
+    secure: true,
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
+    socketTimeout: 15000,
     auth: {
       user: process.env.EMAIL_USER,
       pass: process.env.EMAIL_PASS
@@ -62,7 +65,8 @@ const emailController = {
 
       return true;
     } catch (error) {
-      throw new Error('Failed to send email');
+      console.error('OTP email delivery failed:', error.message);
+      throw new Error('Unable to send the verification email. Please try again.');
     }
   },
 
@@ -112,6 +116,7 @@ const emailController = {
 
       return true;
     } catch (error) {
+      if (error.message === 'Invalid or expired OTP') throw error;
       throw new Error('OTP verification failed');
     }
   },

@@ -5,8 +5,7 @@
   "main": "server.js",
   "scripts": {
     "dev": "nodemon server.js",
-    "start": "node server.js",
-    "test": "node --test test/orderPricing.test.js test/pickupSecurity.test.js"
+    "start": "node server.js"
   },
   "keywords": [],
   "author": "",

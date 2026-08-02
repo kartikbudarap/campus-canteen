@@ -37,6 +37,11 @@ register: async (req, res) => {
 
       await user.save();
 
+      await OTP.findOneAndUpdate(
+        { email, otp, type: 'email_verification', used: false },
+        { used: true }
+      );
+
       // Generate proper authentication token
       const token = jwt.sign(
         { userId: user._id },
@@ -76,7 +81,11 @@ register: async (req, res) => {
       const errors = Object.values(error.errors).map(err => err.message);
       return res.status(400).json({ error: errors.join(', ') });
     }
-    res.status(500).json({ error: 'Server error during registration' });
+    res.status(500).json({
+      error: error.message === 'Unable to send the verification email. Please try again.'
+        ? error.message
+        : 'Server error during registration'
+    });
   }
 },
 
