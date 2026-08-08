@@ -9,6 +9,7 @@ const otpLimiter = rateLimit({ windowMs: 10 * 60 * 1000, max: 5 });
 
 router.post('/register', authLimiter, authController.register);
 router.post('/login', authLimiter, authController.login);
+router.post('/google', authLimiter, authController.googleAuth);
 router.get('/me', auth, authController.getMe);
 
 // New routes for password reset and email verification

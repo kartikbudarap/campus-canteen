@@ -136,6 +136,29 @@ function AppContent() {
     }
   };
 
+
+  const handleGoogleAuth = async (credential) => {
+    try {
+      setLoading(true);
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/google`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ credential }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Google sign-in failed');
+
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('currentUser', JSON.stringify(data.user));
+      setCurrentUser(data.user);
+      navigate(getDashboardPath(data.user.role));
+      showToast(data.message, 'success');
+    } catch (error) {
+      showToast(error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('currentUser');
@@ -253,7 +276,7 @@ function AppContent() {
         <Route path="/login" element={
           <PublicRoute>
             <AuthLayout>
-              <Login onLogin={handleLogin} />
+              <Login onLogin={handleLogin} onGoogleAuth={handleGoogleAuth} />
             </AuthLayout>
           </PublicRoute>
         } />
@@ -261,7 +284,7 @@ function AppContent() {
         <Route path="/register" element={
           <PublicRoute>
             <AuthLayout>
-              <RegisterWithOTP onRegister={handleRegister} />
+              <RegisterWithOTP onRegister={handleRegister} onGoogleAuth={handleGoogleAuth} />
             </AuthLayout>
           </PublicRoute>
         } />

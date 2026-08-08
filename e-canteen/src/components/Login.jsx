@@ -1,8 +1,9 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ChefHat, ShoppingBag, User, LogIn, Eye, EyeOff } from "lucide-react";
+import GoogleAuthButton from './GoogleAuthButton';
 
-export default function Login({ onLogin }) {
+export default function Login({ onLogin, onGoogleAuth }) {
   const navigate = useNavigate();
   const [form, setForm] = useState({
     email: "",
@@ -186,6 +187,12 @@ export default function Login({ onLogin }) {
           )}
         </button>
       </form>
+
+      <GoogleAuthButton
+        onGoogleAuth={onGoogleAuth}
+        setError={setNotification}
+        disabled={loading}
+      />
 
       {/* Demo Credentials — keep for dev */}
       <details className="group">

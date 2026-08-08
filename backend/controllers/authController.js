@@ -3,6 +3,24 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const emailController = require('./emailController');
 const OTP = require('../models/OTP');
+const { OAuth2Client } = require('google-auth-library');
+
+const googleClient = new OAuth2Client();
+
+const createAuthResponse = (user, message) => ({
+  message,
+  token: jwt.sign({ userId: user._id }, process.env.JWT_SECRET, { expiresIn: '24h' }),
+  user: {
+    id: user._id,
+    fullname: user.fullname,
+    email: user.email,
+    role: user.role,
+    phone: user.phone,
+    address: user.address,
+    avatar: user.avatar,
+    emailVerified: user.emailVerified
+  }
+});
 
 const authController = {
   // Register new user
@@ -99,6 +117,9 @@ register: async (req, res) => {
       if (!user) {
         return res.status(400).json({ error: 'Invalid credentials' });
       }
+      if (!user.password) {
+        return res.status(400).json({ error: 'Use Google to sign in to this account' });
+      }
 
       // Check role if specified
       if (role && user.role !== role) {
@@ -118,6 +139,7 @@ register: async (req, res) => {
         { expiresIn: '24h' }
       );
 
+
       res.json({
         message: 'Login successful',
         token,
@@ -133,6 +155,59 @@ register: async (req, res) => {
       });
     } catch (error) {
       res.status(500).json({ error: 'Server error during login' });
+    }
+  },
+
+  // Verify a Google ID token, creating a student account on first sign-in.
+  googleAuth: async (req, res) => {
+    try {
+      if (!process.env.GOOGLE_CLIENT_ID) {
+        return res.status(503).json({ error: 'Google sign-in is not configured' });
+      }
+      const { credential } = req.body;
+      if (!credential) {
+        return res.status(400).json({ error: 'Google credential is required' });
+      }
+      const ticket = await googleClient.verifyIdToken({
+        idToken: credential,
+        audience: process.env.GOOGLE_CLIENT_ID
+      });
+      const profile = ticket.getPayload();
+      if (!profile?.sub || !profile.email || !profile.email_verified) {
+        return res.status(401).json({ error: 'Google account email is not verified' });
+      }
+
+      const email = profile.email.toLowerCase();
+      let user = await User.findOne({ googleId: profile.sub });
+      if (!user) {
+        const existingLocalUser = await User.findOne({ email });
+        if (existingLocalUser) {
+          return res.status(409).json({ error: 'An account with this email already exists. Sign in with its password.' });
+        }
+      }
+      const isNewUser = !user;
+      if (user) {
+        user.googleId = profile.sub;
+        user.emailVerified = true;
+        if (!user.avatar && profile.picture) user.avatar = profile.picture;
+        await user.save();
+      } else {
+        user = await User.create({
+          fullname: profile.name || email.split('@')[0],
+          email,
+          googleId: profile.sub,
+          authProvider: 'google',
+          avatar: profile.picture || '',
+          emailVerified: true,
+          role: 'user'
+        });
+      }
+
+      return res.status(isNewUser ? 201 : 200).json(
+        createAuthResponse(user, isNewUser ? 'Account created with Google' : 'Google login successful')
+      );
+    } catch (error) {
+      return res.status(401).json({ error: 'Invalid or expired Google credential' });
     }
   },
 

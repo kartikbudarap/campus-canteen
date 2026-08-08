@@ -1,5 +1,6 @@
 ﻿import React, { useState } from "react";
 import { Mail, Key, Eye, EyeOff, ArrowLeft, UserPlus, CheckCircle } from "lucide-react";
+import GoogleAuthButton from './GoogleAuthButton';
 
 const postRegistration = async (payload) => {
   const controller = new AbortController();
@@ -21,7 +22,7 @@ const postRegistration = async (payload) => {
   }
 };
 
-export default function RegisterWithOTP({ onRegister }) {
+export default function RegisterWithOTP({ onRegister, onGoogleAuth }) {
   const [step, setStep] = useState(1);
   const [form, setForm] = useState({
     fullname: "",
@@ -239,6 +240,15 @@ export default function RegisterWithOTP({ onRegister }) {
             )}
           </button>
         </form>
+      )}
+
+
+      {step === 1 && (
+        <GoogleAuthButton
+          onGoogleAuth={onGoogleAuth}
+          setError={(message) => showToast(message, 'error')}
+          disabled={loading}
+        />
       )}
 
       {/* Step 2: OTP Verification */}

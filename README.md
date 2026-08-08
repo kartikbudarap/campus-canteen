@@ -115,6 +115,7 @@ PORT=5000
 CLIENT_URL=http://localhost:5173
 MONGODB_URI=mongodb://localhost:27017/food-ordering
 JWT_SECRET=replace_with_a_long_random_secret
+GOOGLE_CLIENT_ID=your_google_oauth_web_client_id.apps.googleusercontent.com
 
 # Optional: add Razorpay Test Mode keys to use hosted checkout.
 # Without them, the app uses the signed local demo payment simulator.
@@ -135,6 +136,7 @@ Optional variables (add to `.env` as needed):
 | `STRIPE_SECRET_KEY`   | Stripe secret key (if using Stripe payments)   |
 | `EMAIL_USER`          | Gmail address for OTP emails                   |
 | `EMAIL_PASS`          | Gmail app password                             |
+| `GOOGLE_CLIENT_ID`    | Google OAuth 2.0 Web client ID (same value as frontend) |
 
 ### Frontend
 
@@ -147,7 +149,10 @@ Create a `.env` file in `e-canteen/`:
 
 ```env
 VITE_API_URL=http://localhost:5000
+VITE_GOOGLE_CLIENT_ID=your_google_oauth_web_client_id.apps.googleusercontent.com
 ```
+
+For Google login/register, create an OAuth 2.0 **Web application** client in Google Cloud Console. Add `http://localhost:5173` under **Authorized JavaScript origins**, then place the same client ID in both environment files as shown above. Restart both servers after changing environment variables. Google sign-in always creates a `user`/Student account; seller and admin roles must still be assigned through your trusted administrative flow.
 
 ## Run Locally
 
